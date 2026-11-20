@@ -6,7 +6,9 @@
 from typing import Any
 
 from fastapi import Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
 class AppError(Exception):
@@ -51,6 +53,11 @@ class StateConflictError(AppError):
     code = "STATE_CONFLICT"
 
 
+class ConflictError(AppError):
+    status_code = 409
+    code = "STATE_CONFLICT"
+
+
 class AIOutputInvalidError(AppError):
     """模型输出未通过 Schema 或业务校验。"""
 
@@ -87,3 +94,24 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     if exc.details:
         payload["details"] = exc.details
     return JSONResponse(status_code=exc.status_code, content=payload)
+
+
+async def request_validation_error_handler(
+    request: Request, _: RequestValidationError
+) -> JSONResponse:
+    """Avoid returning request contents, which can include passwords, in validation errors."""
+    return await app_error_handler(request, ValidationError("Request validation failed"))
+
+
+async def http_exception_handler(
+    request: Request, exc: StarletteHTTPException
+) -> JSONResponse:
+    error_by_status = {
+        401: UnauthenticatedError,
+        403: ForbiddenError,
+        404: ResourceNotFoundError,
+    }
+    error_type = error_by_status.get(exc.status_code)
+    if error_type is not None:
+        return await app_error_handler(request, error_type(str(exc.detail)))
+    return await app_error_handler(request, AppError(str(exc.detail)))
