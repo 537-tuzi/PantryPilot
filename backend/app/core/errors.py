@@ -3,6 +3,8 @@
 错误码与 文档/05 §8 保持一致，前端依赖 code 做分支处理。
 """
 
+import logging
+from collections.abc import Mapping
 from typing import Any
 
 from fastapi import Request
@@ -58,6 +60,16 @@ class ConflictError(AppError):
     code = "STATE_CONFLICT"
 
 
+class MethodNotAllowedError(AppError):
+    status_code = 405
+    code = "METHOD_NOT_ALLOWED"
+
+
+class InternalServerError(AppError):
+    status_code = 500
+    code = "INTERNAL_SERVER_ERROR"
+
+
 class AIOutputInvalidError(AppError):
     """模型输出未通过 Schema 或业务校验。"""
 
@@ -82,18 +94,30 @@ class AITimeoutError(AppError):
     code = "AI_TIMEOUT"
 
 
-async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
-    """把业务异常转换为统一错误结构。"""
+async def app_error_handler(
+    request: Request,
+    exc: AppError,
+    *,
+    headers: Mapping[str, str] | None = None,
+) -> JSONResponse:
+    """把业务异常转换为统一错误结构，并保留协议要求的响应头。"""
     from app.core.request_id import get_request_id
 
+    request_id = get_request_id()
     payload: dict[str, Any] = {
         "code": exc.code,
         "message": exc.message,
-        "request_id": get_request_id(),
+        "request_id": request_id,
     }
     if exc.details:
         payload["details"] = exc.details
-    return JSONResponse(status_code=exc.status_code, content=payload)
+    response_headers = dict(headers or {})
+    response_headers["X-Request-ID"] = request_id
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=payload,
+        headers=response_headers,
+    )
 
 
 async def request_validation_error_handler(
@@ -110,8 +134,17 @@ async def http_exception_handler(
         401: UnauthenticatedError,
         403: ForbiddenError,
         404: ResourceNotFoundError,
+        405: MethodNotAllowedError,
     }
     error_type = error_by_status.get(exc.status_code)
     if error_type is not None:
-        return await app_error_handler(request, error_type(str(exc.detail)))
-    return await app_error_handler(request, AppError(str(exc.detail)))
+        return await app_error_handler(
+            request, error_type(str(exc.detail)), headers=exc.headers
+        )
+    return await app_error_handler(request, AppError(str(exc.detail)), headers=exc.headers)
+
+
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Return the public error envelope without exposing unexpected exception details."""
+    logging.getLogger(__name__).exception("Unhandled application error", exc_info=exc)
+    return await app_error_handler(request, InternalServerError("Internal server error"))
