@@ -14,16 +14,17 @@
 from __future__ import annotations
 
 import sys
-from datetime import date, timedelta
+from datetime import timedelta
 from pathlib import Path
+from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
-from sqlalchemy import inspect, text  # noqa: E402
-
-from app.core.config import settings  # noqa: E402
-from app.core.security import hash_password  # noqa: E402
-from app.db.session import engine  # noqa: E402
+from app.core.config import settings
+from app.core.security import hash_password
+from app.db.session import engine
+from app.domain.expiry import current_date
+from sqlalchemy import inspect, text
 
 DEMO_USERNAME = "demo"
 DEMO_EMAIL = "demo@example.com"
@@ -47,30 +48,38 @@ def table_exists(inspector: object, name: str) -> bool:
 
 def seed() -> None:
     """写入合成数据。"""
+    if settings.app_env.strip().lower() not in {"development", "dev", "local", "test"}:
+        raise SystemExit("拒绝在非开发/测试环境写入演示账户")
+
     inspector = inspect(engine)
-    today = date.today()
+    today = current_date()
 
     with engine.begin() as conn:
+        user_id = None
         if table_exists(inspector, "users"):
-            conn.execute(
+            user_id = conn.execute(
                 text(
                     """
-                    INSERT INTO users (username, email, password_hash, is_active, created_at, updated_at)
-                    VALUES (:username, :email, :password_hash, true, now(), now())
+                    INSERT INTO users
+                        (id, username, email, password_hash, is_active, created_at, updated_at)
+                    VALUES
+                        (:id, :username, :email, :password_hash, true, now(), now())
                     ON CONFLICT (username) DO UPDATE
                     SET email = EXCLUDED.email,
                         password_hash = EXCLUDED.password_hash,
                         is_active = true,
                         updated_at = now()
+                    RETURNING id
                     """
                 ),
                 {
+                    "id": uuid4(),
                     "username": DEMO_USERNAME,
                     "email": DEMO_EMAIL,
                     # 使用与应用登录一致的 Argon2id 哈希，不写入明文密码。
                     "password_hash": hash_password(DEMO_PASSWORD),
                 },
-            )
+            ).scalar()
             print("已写入演示账户")
 
         if table_exists(inspector, "ingredient_catalog"):
@@ -78,36 +87,42 @@ def seed() -> None:
                 conn.execute(
                     text(
                         """
-                        INSERT INTO ingredient_catalog (canonical_name, category, default_unit)
-                        VALUES (:name, :category, :unit)
+                        INSERT INTO ingredient_catalog
+                            (id, canonical_name, category, default_unit)
+                        VALUES
+                            (:id, :name, :category, :unit)
                         ON CONFLICT DO NOTHING
                         """
                     ),
-                    {"name": name, "category": category, "unit": unit},
+                    {"id": uuid4(), "name": name, "category": category, "unit": unit},
                 )
             print("已写入食材目录")
 
-        if table_exists(inspector, "inventory_items"):
-            user_id = conn.execute(
-                text("SELECT id FROM users WHERE username = :username"),
-                {"username": DEMO_USERNAME},
+        if user_id is not None and table_exists(inspector, "inventory_items"):
+            existing = conn.execute(
+                text("SELECT count(*) FROM inventory_items WHERE user_id = :user_id"),
+                {"user_id": user_id},
             ).scalar()
-            if user_id is None:
-                print("未找到演示账户，跳过库存写入")
+            if existing:
+                print("演示账户已有库存，跳过库存写入")
                 return
+
+            ledger_enabled = table_exists(inspector, "inventory_transactions")
             for name, _category, unit, qty, location, offset in INGREDIENTS:
+                item_id = uuid4()
                 conn.execute(
                     text(
                         """
                         INSERT INTO inventory_items
-                            (user_id, display_name, quantity, unit, purchase_date, expiry_date,
-                             storage_location, version, created_at, updated_at)
+                            (id, user_id, display_name, quantity, unit, purchase_date,
+                             expiry_date, storage_location, version, created_at, updated_at)
                         VALUES
-                            (:user_id, :name, :qty, :unit, :purchase_date, :expiry_date,
-                             :location, 1, now(), now())
+                            (:id, :user_id, :name, :qty, :unit, :purchase_date,
+                             :expiry_date, :location, 1, now(), now())
                         """
                     ),
                     {
+                        "id": item_id,
                         "user_id": user_id,
                         "name": name,
                         "qty": qty,
@@ -117,7 +132,27 @@ def seed() -> None:
                         "location": location,
                     },
                 )
-            print("已写入库存批次（含临期与过期样例）")
+                if ledger_enabled:
+                    conn.execute(
+                        text(
+                            """
+                            INSERT INTO inventory_transactions
+                                (id, user_id, inventory_item_id, delta_quantity, unit,
+                                 reason, source_type)
+                            VALUES
+                                (:id, :user_id, :item_id, :qty, :unit,
+                                 'add', 'manual')
+                            """
+                        ),
+                        {
+                            "id": uuid4(),
+                            "user_id": user_id,
+                            "item_id": item_id,
+                            "qty": qty,
+                            "unit": unit,
+                        },
+                    )
+            print("已写入库存批次与初始流水（含临期与过期样例）")
 
 
 if __name__ == "__main__":

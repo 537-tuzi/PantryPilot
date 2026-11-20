@@ -10,6 +10,7 @@ from uuid import UUID
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
+from app.domain.expiry import EXPIRING_WINDOW_DAYS
 from app.models.ingredient import IngredientCatalog
 from app.models.inventory import InventoryItem, InventoryTransaction
 
@@ -171,13 +172,13 @@ class InventoryRepository:
             return [
                 InventoryItem.expiry_date.is_not(None),
                 InventoryItem.expiry_date >= today,
-                InventoryItem.expiry_date <= today + timedelta(days=3),
+                InventoryItem.expiry_date <= today + timedelta(days=EXPIRING_WINDOW_DAYS),
             ]
         if status == "normal":
             return [
                 or_(
                     InventoryItem.expiry_date.is_(None),
-                    InventoryItem.expiry_date > today + timedelta(days=3),
+                    InventoryItem.expiry_date > today + timedelta(days=EXPIRING_WINDOW_DAYS),
                 )
             ]
         return []

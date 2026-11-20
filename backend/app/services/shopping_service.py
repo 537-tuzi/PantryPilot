@@ -9,6 +9,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.core.errors import ResourceNotFoundError, StateConflictError
+from app.domain.shopping import can_transition
 from app.models.shopping import ShoppingItem
 from app.repositories.meal_plan_repository import MealPlanRepository
 from app.repositories.shopping_repository import ShoppingRepository
@@ -93,14 +94,25 @@ class ShoppingService:
         payload: ShoppingItemStatusUpdatePayload,
     ) -> ShoppingItemResponse:
         item = self._get_owned(db, user_id, item_id)
+        if not can_transition(item.status, payload.status):
+            raise StateConflictError(
+                f"Cannot change shopping item status from {item.status} to {payload.status}"
+            )
+        if item.status == payload.status:
+            return self._to_response(item)
+
         item.status = payload.status
         self._commit(db)
         db.refresh(item)
         return self._to_response(item)
 
     def delete(self, db: Session, user_id: UUID, item_id: UUID) -> None:
+        """Soft delete: cancel the item so its history remains queryable."""
         item = self._get_owned(db, user_id, item_id)
-        self._shopping.delete(db, item)
+        if item.status == "cancelled":
+            return
+
+        item.status = "cancelled"
         self._commit(db)
 
     def import_from_meal_plan(

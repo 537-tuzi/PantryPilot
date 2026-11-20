@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
-from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.core.errors import ResourceNotFoundError, StateConflictError, ValidationError
+from app.domain.expiry import EXPIRING_WINDOW_DAYS, current_date, inventory_status
+from app.domain.inventory import reason_direction_error
 from app.models.inventory import InventoryItem, InventoryTransaction
 from app.repositories.inventory_repository import InventoryRepository
 from app.schemas.inventory import (
@@ -19,24 +19,6 @@ from app.schemas.inventory import (
     InventoryResponse,
     InventoryUpdatePayload,
 )
-
-EXPIRING_WINDOW_DAYS = 3
-
-
-def current_date() -> date:
-    """Today in the configured application timezone."""
-    return datetime.now(ZoneInfo(settings.app_timezone)).date()
-
-
-def inventory_status(expiry_date: date | None, today: date) -> str:
-    """Status is derived at read time and never persisted."""
-    if expiry_date is None:
-        return "normal"
-    if expiry_date < today:
-        return "expired"
-    if expiry_date <= today + timedelta(days=EXPIRING_WINDOW_DAYS):
-        return "expiring"
-    return "normal"
 
 
 class InventoryService:
@@ -127,7 +109,9 @@ class InventoryService:
         if quantity_delta is not None:
             if payload.reason is None:
                 raise ValidationError("reason is required when quantity changes")
-            self._validate_reason_direction(payload.reason, quantity_delta)
+            direction_error = reason_direction_error(payload.reason, quantity_delta)
+            if direction_error is not None:
+                raise ValidationError(direction_error)
         elif metadata_changed and payload.reason is None:
             raise ValidationError("reason is required when updating dates or storage location")
 
@@ -194,13 +178,6 @@ class InventoryService:
                 return
             raise StateConflictError("Inventory item was modified by another request")
         db.commit()
-
-    @staticmethod
-    def _validate_reason_direction(reason: str, delta: Decimal) -> None:
-        if reason == "add" and delta <= 0:
-            raise ValidationError("reason 'add' requires a positive quantity delta")
-        if reason == "consume" and delta >= 0:
-            raise ValidationError("reason 'consume' requires a negative quantity delta")
 
     def list_items(
         self,

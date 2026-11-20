@@ -10,9 +10,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token
+from app.domain.expiry import current_date
 from app.models.inventory import InventoryItem
 from app.models.user import User
-from app.services.inventory_service import current_date
 
 
 def make_user(db: Session, suffix: str) -> User:
@@ -91,5 +91,5 @@ def test_dashboard_is_read_only_and_uses_shanghai_date(monkeypatch) -> None:
         def now(timezone):
             return datetime(2026, 11, 20, 16, 30, tzinfo=UTC).astimezone(timezone)
 
-    monkeypatch.setattr("app.services.inventory_service.datetime", ShanghaiClock)
+    monkeypatch.setattr("app.domain.expiry.datetime", ShanghaiClock)
     assert current_date() == date(2026, 11, 21)
