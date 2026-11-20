@@ -1,21 +1,18 @@
+"""请求上下文：request_id 贯穿日志与错误响应（NFR-008）。"""
+
+from contextvars import ContextVar
 from uuid import uuid4
 
-from fastapi import Request
-from starlette.middleware.base import BaseHTTPMiddleware
-
-from app.core.logging import request_id_context
+_request_id: ContextVar[str] = ContextVar("request_id", default="")
 
 
-class RequestIdMiddleware(BaseHTTPMiddleware):
-    """Assign an internal request identifier and return it to API clients."""
+def set_request_id(value: str | None = None) -> str:
+    """设置当前请求的 request_id，返回最终值。"""
+    rid = value or uuid4().hex
+    _request_id.set(rid)
+    return rid
 
-    async def dispatch(self, request: Request, call_next):
-        request_id = str(uuid4())
-        request.state.request_id = request_id
-        token = request_id_context.set(request_id)
-        try:
-            response = await call_next(request)
-        finally:
-            request_id_context.reset(token)
-        response.headers["X-Request-ID"] = request_id
-        return response
+
+def get_request_id() -> str:
+    """返回当前请求的 request_id。"""
+    return _request_id.get()

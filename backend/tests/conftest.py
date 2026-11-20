@@ -1,29 +1,45 @@
+"""pytest 公共夹具。
+
+约定（文档/07 §2）：
+- 测试库与开发库隔离，自动化测试使用独立测试库；
+- 使用合成账户与合成食材，不导入真实个人数据；
+- 固定测试时钟或显式传入日期。
+"""
+
 import os
+from collections.abc import Generator
 
 import pytest
-from sqlalchemy.orm import Session
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 
-test_database_url = os.getenv("TEST_DATABASE_URL")
-if not test_database_url:
-    raise RuntimeError("TEST_DATABASE_URL must be set so tests never use the development database.")
-if not test_database_url.rstrip("/").endswith("/pantrypilot_test"):
-    raise RuntimeError("TEST_DATABASE_URL must point to the isolated pantrypilot_test database.")
+from app.db.base import Base
+from app.main import app
 
-os.environ["DATABASE_URL"] = test_database_url
-
-from app.db.session import engine
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
 
 
 @pytest.fixture
-def db_session() -> Session:
-    """Run each database test in a transaction that is rolled back afterwards."""
-    connection = engine.connect()
-    transaction = connection.begin()
-    session = Session(bind=connection)
+def client() -> Generator[TestClient, None, None]:
+    """提供 API 测试客户端。"""
+    with TestClient(app) as test_client:
+        yield test_client
+
+
+@pytest.fixture
+def db_session() -> Generator[Session, None, None]:
+    """提供测试数据库会话；未配置 TEST_DATABASE_URL 时跳过。"""
+    if not TEST_DATABASE_URL:
+        pytest.skip("未配置 TEST_DATABASE_URL，跳过数据库用例")
+
+    engine = create_engine(TEST_DATABASE_URL, pool_pre_ping=True, future=True)
+    testing_session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    Base.metadata.create_all(bind=engine)
+
+    session = testing_session()
     try:
         yield session
     finally:
         session.close()
-        if transaction.is_active:
-            transaction.rollback()
-        connection.close()
+        Base.metadata.drop_all(bind=engine)

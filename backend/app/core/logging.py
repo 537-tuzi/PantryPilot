@@ -1,8 +1,15 @@
+"""日志配置。
+
+要求：记录 request_id、耗时、状态与错误类别；不记录密码、令牌与密钥（NFR-008）。
+"""
+
 import logging
 import re
-from contextvars import ContextVar
+import sys
 
-request_id_context: ContextVar[str] = ContextVar("request_id", default="-")
+from app.core.request_id import get_request_id
+
+LOG_FORMAT = "%(asctime)s %(levelname)s [%(request_id)s] %(name)s: %(message)s"
 
 _SENSITIVE_PATTERNS = (
     re.compile(r"(?i)\b(authorization\s*:\s*bearer)\s+[^\s,;]+"),
@@ -12,6 +19,7 @@ _SENSITIVE_PATTERNS = (
 
 
 def redact_sensitive_text(value: str) -> str:
+    """脱敏密码、令牌与数据库连接串中的凭据。"""
     authorization_pattern, key_value_pattern, database_url_pattern = _SENSITIVE_PATTERNS
     redacted = authorization_pattern.sub(r"\1 [REDACTED]", value)
     redacted = key_value_pattern.sub(r"\1=[REDACTED]", redacted)
@@ -19,9 +27,11 @@ def redact_sensitive_text(value: str) -> str:
     return redacted
 
 
-class RequestContextFilter(logging.Filter):
+class RequestIdFilter(logging.Filter):
+    """把 request_id 注入日志记录，并对消息脱敏。"""
+
     def filter(self, record: logging.LogRecord) -> bool:
-        record.request_id = request_id_context.get()
+        record.request_id = get_request_id() or "-"
         if record.args:
             record.msg = redact_sensitive_text(record.getMessage())
             record.args = ()
@@ -30,12 +40,12 @@ class RequestContextFilter(logging.Filter):
         return True
 
 
-def configure_logging(level: str) -> None:
-    handler = logging.StreamHandler()
-    handler.addFilter(RequestContextFilter())
-    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s request_id=%(request_id)s %(name)s %(message)s"))
+def configure_logging(level: str | None = None) -> None:
+    """配置根日志处理器。"""
+    handler = logging.StreamHandler(sys.stdout)
+    handler.addFilter(RequestIdFilter())
+    handler.setFormatter(logging.Formatter(LOG_FORMAT))
 
-    root_logger = logging.getLogger()
-    root_logger.handlers.clear()
-    root_logger.addHandler(handler)
-    root_logger.setLevel(level.upper())
+    root = logging.getLogger()
+    root.handlers = [handler]
+    root.setLevel(level or "INFO")

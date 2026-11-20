@@ -1,29 +1,107 @@
-# Local Python environments and tooling
-.venv/
-venv/
+# ==========================================================
+# PantryPilot 忽略规则
+# 原则：只提交团队协作必需的文件；本地产物、密钥、个人分析草稿一律忽略
+# ==========================================================
+
+# ---------- 依赖与构建产物 ----------
+node_modules/
+dist/
+build/
+.vite/
+*.tsbuildinfo
+*.tgz
+
+# ---------- Python ----------
 __pycache__/
 *.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
 
-# Build / packaging artifacts
-*.egg-info/
-build/
-dist/
-
-# Local configuration and secrets
+# ---------- 环境变量与密钥（严禁提交） ----------
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+secrets/
 
-# Office temporary lock files
-~$*
-
-# Local SQLite databases (if ever used for scratch testing)
+# ---------- 本地数据库与数据 ----------
+*.sqlite
+*.sqlite3
 *.db
-*.db-journal
+data/
+postgres-data/
 
-# Runtime output
+# ---------- 备份与转储 ----------
+*.sql
+*.sql.gz
+*.dump
+backup/
+backups/
+dumps/
+
+# ---------- 测试与检查产物 ----------
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+/screenshots/
+/artifacts/
+.vitest/
+
+# ---------- 个人临时、分析与记录文件（团队用不到） ----------
+scratch/
+analysis/
+notes/
+研究草稿/
+个人记录/
+tmp/
+temp/
+*.scratch.md
+*.private.md
+*.local.md
+*.notes.md
+*.wip.md
+*.draft.md
+zzz_*
+_*.tmp
+*.bak
+*.orig
+*.rej
 *.log
-coverage.xml
-htmlcov/
+
+# ---------- 编辑器与 IDE ----------
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+
+# ---------- Office / 临时文件 ----------
+~$*.docx
+~$*.xlsx
+~$*.doc
+.~lock.*
+*.tmp
+
+# ---------- 操作系统 ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- 转换与渲染中间产物 ----------
+*.pdf.tmp
+*.png.tmp
