@@ -6,11 +6,18 @@
 from collections.abc import Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.router import api_router
 from app.core.config import settings
-from app.core.errors import AppError, app_error_handler
+from app.core.errors import (
+    AppError,
+    app_error_handler,
+    http_exception_handler,
+    request_validation_error_handler,
+)
 from app.core.logging import configure_logging
 from app.core.request_id import set_request_id
 
@@ -45,6 +52,8 @@ async def request_id_middleware(
 
 
 app.add_exception_handler(AppError, app_error_handler)  # type: ignore[arg-type]
+app.add_exception_handler(RequestValidationError, request_validation_error_handler)
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.include_router(api_router, prefix=settings.api_prefix)
 
 

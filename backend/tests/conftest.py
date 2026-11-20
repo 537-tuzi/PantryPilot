@@ -12,23 +12,23 @@ from collections.abc import Generator
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.db.base import Base
+from app.db.session import get_db
 from app.main import app
 
 TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
 
 
-@pytest.fixture
-def client() -> Generator[TestClient, None, None]:
+def _legacy_client() -> Generator[TestClient, None, None]:
     """提供 API 测试客户端。"""
     with TestClient(app) as test_client:
         yield test_client
 
 
-@pytest.fixture
-def db_session() -> Generator[Session, None, None]:
+def _unsafe_legacy_db_session() -> Generator[Session, None, None]:
     """提供测试数据库会话；未配置 TEST_DATABASE_URL 时跳过。"""
     if not TEST_DATABASE_URL:
         pytest.skip("未配置 TEST_DATABASE_URL，跳过数据库用例")
@@ -43,3 +43,43 @@ def db_session() -> Generator[Session, None, None]:
     finally:
         session.close()
         Base.metadata.drop_all(bind=engine)
+
+
+# These definitions supersede the initial bootstrap fixtures above. Existing test databases are
+# migrated separately; tests must never create or drop their business schema.
+@pytest.fixture
+def db_session() -> Generator[Session, None, None]:
+    if not TEST_DATABASE_URL:
+        raise RuntimeError("TEST_DATABASE_URL is required for database tests")
+    if make_url(TEST_DATABASE_URL).database != "pantrypilot_test":
+        raise RuntimeError("TEST_DATABASE_URL must point to the pantrypilot_test database")
+
+    engine = create_engine(TEST_DATABASE_URL, pool_pre_ping=True, future=True)
+    with engine.connect() as connection:
+        transaction = connection.begin()
+        testing_session = sessionmaker(
+            autocommit=False,
+            autoflush=False,
+            bind=connection,
+            expire_on_commit=False,
+            join_transaction_mode="create_savepoint",
+        )
+        session = testing_session()
+
+        def override_get_db() -> Generator[Session, None, None]:
+            yield session
+
+        app.dependency_overrides[get_db] = override_get_db
+        try:
+            yield session
+        finally:
+            app.dependency_overrides.pop(get_db, None)
+            session.close()
+            transaction.rollback()
+    engine.dispose()
+
+
+@pytest.fixture
+def client(db_session: Session) -> Generator[TestClient, None, None]:
+    with TestClient(app) as test_client:
+        yield test_client
