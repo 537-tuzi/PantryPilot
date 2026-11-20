@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     llm_timeout_seconds: int = 20
 
     # 允许来源，逗号分隔
-    cors_origins: str = "http://localhost:5173,http://localhost"
+    cors_origins: str = "http://localhost:5200,http://localhost"
 
     @property
     def cors_origin_list(self) -> list[str]:

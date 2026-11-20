@@ -13,7 +13,7 @@ export default defineConfig({
   // 根目录 .env 同时提供后端与前端变量
   envDir: '..',
   server: {
-    port: 5173,
+    port: 5200,
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
