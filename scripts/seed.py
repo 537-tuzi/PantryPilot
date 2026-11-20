@@ -17,7 +17,24 @@ import sys
 from datetime import date, timedelta
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
+
+def _bootstrap_import_path() -> None:
+    """把后端包目录加入 sys.path。
+
+    兼容三种运行方式：
+      - 仓库布局： <repo>/scripts/seed.py + <repo>/backend/app
+      - 容器布局： /app/scripts/seed.py    + /app/app
+      - 直接在 backend 目录下运行
+    """
+    here = Path(__file__).resolve()
+    for candidate in (here.parents[1] / "backend", here.parents[1], Path.cwd()):
+        if (candidate / "app" / "__init__.py").exists():
+            sys.path.insert(0, str(candidate))
+            return
+    raise RuntimeError("未找到后端包目录（app/），请在仓库根目录或 backend 目录下运行")
+
+
+_bootstrap_import_path()
 
 from sqlalchemy import inspect, text  # noqa: E402
 
@@ -48,6 +65,14 @@ def seed() -> None:
     """写入合成数据。"""
     inspector = inspect(engine)
     today = date.today()
+
+    known = ("users", "ingredient_catalog", "inventory_items")
+    if not any(table_exists(inspector, name) for name in known):
+        print(
+            "未发现业务表（users / ingredient_catalog / inventory_items）。"
+            "业务模型尚未落地时属正常情况；模型就绪后请先执行 alembic upgrade head 再重跑本脚本。"
+        )
+        return
 
     with engine.begin() as conn:
         if table_exists(inspector, "users"):

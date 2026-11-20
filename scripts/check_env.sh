@@ -100,8 +100,14 @@ else warn "前端测试未通过，执行：cd frontend && npm run test"; fi
 
 head "7. 容器"
 if command -v docker >/dev/null 2>&1; then
-  docker compose -f deploy/docker-compose.yml ps --format '{{.Service}} {{.State}}' 2>/dev/null \
-    | while read -r svc state; do echo "    $svc: $state"; done
+  if docker info >/dev/null 2>&1; then
+    docker compose -f deploy/docker-compose.yml ps --format '    {{.Service}}: {{.State}}' 2>/dev/null \
+      || echo "    （未启动 compose 服务）"
+  else
+    warn "无权访问 docker daemon：执行 newgrp docker 或重新登录后重试"
+  fi
+else
+  warn "未安装 docker"
 fi
 
 printf '\n\033[1m结果：PASS %d / WARN %d / FAIL %d\033[0m\n' "$PASS" "$WARN" "$FAIL"
