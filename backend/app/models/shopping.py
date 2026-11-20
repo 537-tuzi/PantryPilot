@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 class ShoppingItem(TimestampMixin, Base):
     __tablename__ = "shopping_items"
     __table_args__ = (
+        CheckConstraint("quantity > 0", name="quantity_positive"),
         CheckConstraint(
             "status IN ('pending', 'purchased', 'cancelled')", name="status_allowed_values"
         ),
