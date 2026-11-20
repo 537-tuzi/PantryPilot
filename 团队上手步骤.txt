@@ -42,6 +42,10 @@ PantryPilot（食刻管家）· 团队上手：五个 Git 步骤
     docker compose -f deploy/docker-compose.yml up -d db
     docker compose -f deploy/docker-compose.yml exec backend alembic upgrade head
 
+  环境自检（务必跑一次，确认本机配置无误）：
+    bash scripts/check_env.sh
+    期望输出：FAIL 0。出现 FAIL 先按提示修复，不要带着坏环境开工。
+
 【第 3 步】认领目录，按《开发规范.md》第 3 节动手
 --------------------------------------------------------------------------------
   A 组（前端/产品协调）  frontend/src/**

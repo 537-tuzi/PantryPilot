@@ -80,6 +80,13 @@ docker compose -f deploy/docker-compose.yml exec backend alembic upgrade head
 curl http://localhost/health
 ```
 
+环境自检：
+
+```bash
+bash scripts/check_env.sh    # 工具链 / Git / .env / 端口 / 后端 / 前端 逐项检查
+bash scripts/bootstrap.sh   # 一键初始化（venv、依赖、.env、数据库、迁移）
+```
+
 ## 文档索引
 
 | 文档 | 用途 |

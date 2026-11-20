@@ -5,7 +5,7 @@ WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm install --no-audit --no-fund
 
-COPY frontend/index.html frontend/tsconfig*.json frontend/vite.config.ts frontend/eslint.config.ts ./
+COPY frontend/index.html frontend/tsconfig*.json frontend/vite.config.ts frontend/eslint.config.mjs ./
 COPY frontend/src ./src
 COPY frontend/tests ./tests
 RUN npm run build
