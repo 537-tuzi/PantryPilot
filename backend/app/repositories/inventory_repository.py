@@ -59,7 +59,7 @@ class InventoryRepository:
             conditions.append(InventoryItem.display_name.ilike(f"%{name}%"))
         if category:
             conditions.append(IngredientCatalog.category == category)
-        conditions.extend(self._status_conditions(status, today))
+        conditions.extend(self.status_conditions(status, today))
 
         statement = select(InventoryItem)
         count_statement = select(func.count()).select_from(InventoryItem)
@@ -163,7 +163,8 @@ class InventoryRepository:
         return list(db.scalars(statement))
 
     @staticmethod
-    def _status_conditions(status: str | None, today: date) -> list[Any]:
+    def status_conditions(status: str | None, today: date) -> list[Any]:
+        """Return the shared SQL predicates for derived inventory expiry status."""
         if status == "expired":
             return [InventoryItem.expiry_date.is_not(None), InventoryItem.expiry_date < today]
         if status == "expiring":

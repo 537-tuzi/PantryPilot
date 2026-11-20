@@ -23,6 +23,22 @@ class MealPlanRepository:
         )
         return db.scalar(statement)
 
+    def get_for_shopping_import(
+        self, db: Session, user_id: UUID, plan_id: UUID
+    ) -> MealPlan | None:
+        """Lock one owned plan and load the persisted ingredient lines for an import."""
+        statement = (
+            select(MealPlan)
+            .options(
+                selectinload(MealPlan.items)
+                .selectinload(MealPlanItem.ingredients)
+                .selectinload(MealPlanIngredient.inventory_item),
+            )
+            .where(MealPlan.id == plan_id, MealPlan.user_id == user_id)
+            .with_for_update()
+        )
+        return db.scalar(statement)
+
     def get_detail(self, db: Session, user_id: UUID, plan_id: UUID) -> MealPlan | None:
         """Return a user-scoped plan with its dishes and persisted ingredient lines."""
         statement = (
