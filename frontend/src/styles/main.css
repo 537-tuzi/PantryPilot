@@ -1,0 +1,57 @@
+:root {
+  --pp-navy: #2b4c7e;
+  --pp-bg: #f4f7fb;
+  --pp-line: #e3eaf2;
+  --pp-ink: #0d1b2a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, 'Microsoft YaHei', sans-serif;
+  color: var(--pp-ink);
+  background: var(--pp-bg);
+}
+
+.pp-page {
+  padding: 24px;
+}
+
+.pp-page-title {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.pp-page-desc {
+  margin: 0 0 16px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+/* 状态标签：颜色之外同时给出文字，不依赖颜色传达信息 */
+.pp-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.pp-status--normal {
+  background: #eef4fb;
+  color: #2b4c7e;
+}
+
+.pp-status--expiring {
+  background: #fff1d8;
+  color: #8a5a00;
+}
+
+.pp-status--expired {
+  background: #fdecec;
+  color: #a11;
+}
