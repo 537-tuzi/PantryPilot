@@ -17,6 +17,7 @@ from app.core.errors import (
     app_error_handler,
     http_exception_handler,
     request_validation_error_handler,
+    unhandled_exception_handler,
 )
 from app.core.logging import configure_logging
 from app.core.request_id import set_request_id
@@ -54,6 +55,7 @@ async def request_id_middleware(
 app.add_exception_handler(AppError, app_error_handler)  # type: ignore[arg-type]
 app.add_exception_handler(RequestValidationError, request_validation_error_handler)
 app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+app.add_exception_handler(Exception, unhandled_exception_handler)
 app.include_router(api_router, prefix=settings.api_prefix)
 
 

@@ -2,7 +2,7 @@
 name = "pantrypilot-backend"
 version = "1.1.0"
 description = "PantryPilot 后端 API"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 [project.optional-dependencies]
 dev = [
@@ -14,7 +14,7 @@ dev = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 src = ["app", "tests"]
 # 仅排除已经执行过的历史迁移脚本（不可再改）；alembic/env.py 与后续新迁移仍需通过检查
 extend-exclude = ["alembic/versions/20261120_0001_initial_business_schema.py"]
@@ -40,7 +40,7 @@ markers = [
 ]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 warn_unused_configs = true
 ignore_missing_imports = true
 plugins = []

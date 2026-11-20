@@ -1,6 +1,6 @@
 """Password hashing and JWT helpers used by the authentication boundary."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -39,7 +39,7 @@ def password_needs_rehash(password_hash: str) -> bool:
 
 def create_access_token(user_id: UUID, *, expires_delta: timedelta | None = None) -> str:
     """Create a signed, expiring access token for one user."""
-    expires_at = datetime.now(timezone.utc) + (
+    expires_at = datetime.now(UTC) + (
         expires_delta or timedelta(minutes=settings.jwt_access_token_expire_minutes)
     )
     payload: dict[str, Any] = {"sub": str(user_id), "exp": expires_at}
