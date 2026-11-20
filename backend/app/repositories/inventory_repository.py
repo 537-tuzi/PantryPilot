@@ -106,6 +106,21 @@ class InventoryRepository:
         )
         return list(db.scalars(statement))
 
+    def lock_items_for_update(
+        self, db: Session, user_id: UUID, item_ids: list[UUID]
+    ) -> list[InventoryItem]:
+        """Lock inventory rows in a deterministic order to avoid deadlocks."""
+        statement = (
+            select(InventoryItem)
+            .where(
+                InventoryItem.user_id == user_id,
+                InventoryItem.id.in_(item_ids),
+            )
+            .order_by(InventoryItem.id)
+            .with_for_update()
+        )
+        return list(db.scalars(statement))
+
     def add(self, db: Session, item: InventoryItem) -> None:
         db.add(item)
 
