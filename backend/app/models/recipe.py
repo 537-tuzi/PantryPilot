@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Integer, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -19,7 +20,11 @@ if TYPE_CHECKING:
 
 class Recipe(TimestampMixin, Base):
     __tablename__ = "recipes"
-    __table_args__ = (CheckConstraint("source_type IN ('manual', 'ai', 'import')", name="source_type_allowed_values"),)
+    __table_args__ = (
+        CheckConstraint(
+            "source_type IN ('manual', 'ai', 'import')", name="source_type_allowed_values"
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID | None] = mapped_column(
@@ -41,9 +46,13 @@ class RecipeIngredient(TimestampMixin, Base):
     __tablename__ = "recipe_ingredients"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    recipe_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("recipes.id", ondelete="RESTRICT"), nullable=False)
+    recipe_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("recipes.id", ondelete="RESTRICT"), nullable=False
+    )
     ingredient_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("ingredient_catalog.id", ondelete="SET NULL"), nullable=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("ingredient_catalog.id", ondelete="SET NULL"),
+        nullable=True,
     )
     display_name: Mapped[str] = mapped_column(Text, nullable=False)
     quantity: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)

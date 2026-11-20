@@ -20,15 +20,21 @@ if TYPE_CHECKING:
 class ShoppingItem(TimestampMixin, Base):
     __tablename__ = "shopping_items"
     __table_args__ = (
-        CheckConstraint("status IN ('pending', 'purchased', 'cancelled')", name="status_allowed_values"),
+        CheckConstraint(
+            "status IN ('pending', 'purchased', 'cancelled')", name="status_allowed_values"
+        ),
         Index("ix_shopping_items_user_id_status_created_at", "user_id", "status", "created_at"),
     )
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
     display_name: Mapped[str] = mapped_column(Text, nullable=False)
     ingredient_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("ingredient_catalog.id", ondelete="SET NULL"), nullable=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("ingredient_catalog.id", ondelete="SET NULL"),
+        nullable=True,
     )
     quantity: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
     unit: Mapped[str] = mapped_column(Text, nullable=False)

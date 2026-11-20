@@ -5,8 +5,20 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+)
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -28,7 +40,9 @@ class MealPlan(TimestampMixin, Base):
     )
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
     plan_date: Mapped[date] = mapped_column(Date, nullable=False)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     request_constraints: Mapped[Any] = mapped_column(JSONB, nullable=False)
@@ -49,7 +63,9 @@ class MealPlanItem(TimestampMixin, Base):
     meal_plan_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("meal_plans.id", ondelete="RESTRICT"), nullable=False
     )
-    recipe_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("recipes.id", ondelete="SET NULL"), nullable=True)
+    recipe_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("recipes.id", ondelete="SET NULL"), nullable=True
+    )
     recipe_snapshot: Mapped[Any] = mapped_column(JSONB, nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False)
 
@@ -75,4 +91,6 @@ class MealPlanIngredient(TimestampMixin, Base):
     is_missing: Mapped[bool] = mapped_column(Boolean, nullable=False)
 
     meal_plan_item: Mapped[MealPlanItem] = relationship(back_populates="ingredients")
-    inventory_item: Mapped[InventoryItem | None] = relationship(back_populates="meal_plan_ingredients")
+    inventory_item: Mapped[InventoryItem | None] = relationship(
+        back_populates="meal_plan_ingredients"
+    )

@@ -34,4 +34,6 @@ class User(TimestampMixin, Base):
     recipes: Mapped[list[Recipe]] = relationship(back_populates="user")
     meal_plans: Mapped[list[MealPlan]] = relationship(back_populates="user")
     shopping_items: Mapped[list[ShoppingItem]] = relationship(back_populates="user")
-    meal_plan_confirmations: Mapped[list[MealPlanConfirmation]] = relationship(back_populates="user")
+    meal_plan_confirmations: Mapped[list[MealPlanConfirmation]] = relationship(
+        back_populates="user"
+    )

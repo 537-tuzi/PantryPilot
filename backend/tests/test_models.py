@@ -20,7 +20,12 @@ from app.models import (
 
 
 def create_user(session: Session, suffix: str = "one") -> User:
-    user = User(username=f"user_{suffix}", email=f"{suffix}@example.test", password_hash="hash", is_active=True)
+    user = User(
+        username=f"user_{suffix}",
+        email=f"{suffix}@example.test",
+        password_hash="hash",
+        is_active=True,
+    )
     session.add(user)
     session.flush()
     return user
@@ -87,7 +92,14 @@ def test_inventory_quantity_cannot_be_negative(db_session: Session) -> None:
 
 def test_username_must_be_unique(db_session: Session) -> None:
     create_user(db_session, "duplicate")
-    db_session.add(User(username="user_duplicate", email="another@example.test", password_hash="hash", is_active=True))
+    db_session.add(
+        User(
+            username="user_duplicate",
+            email="another@example.test",
+            password_hash="hash",
+            is_active=True,
+        )
+    )
 
     with pytest.raises(IntegrityError):
         db_session.flush()
@@ -95,7 +107,14 @@ def test_username_must_be_unique(db_session: Session) -> None:
 
 def test_email_must_be_unique(db_session: Session) -> None:
     create_user(db_session, "duplicate")
-    db_session.add(User(username="another_username", email="duplicate@example.test", password_hash="hash", is_active=True))
+    db_session.add(
+        User(
+            username="another_username",
+            email="duplicate@example.test",
+            password_hash="hash",
+            is_active=True,
+        )
+    )
 
     with pytest.raises(IntegrityError):
         db_session.flush()
@@ -209,6 +228,8 @@ def test_multiple_transactions_can_share_confirmation_operation(db_session: Sess
     db_session.flush()
 
     count = db_session.scalar(
-        select(func.count()).select_from(InventoryTransaction).where(InventoryTransaction.operation_id == confirmation.id)
+        select(func.count())
+        .select_from(InventoryTransaction)
+        .where(InventoryTransaction.operation_id == confirmation.id)
     )
     assert count == 2
