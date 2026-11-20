@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     app_env: str = "development"
     # 无默认值：缺失即校验失败，避免静默使用弱密钥。
     secret_key: str
+    # 临期/过期状态按该时区的“今天”计算；用户表暂无时区字段。
+    app_timezone: str = "Asia/Shanghai"
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 60
     database_url: str = "postgresql+psycopg://pantry:pantry@localhost:5432/pantrypilot"
