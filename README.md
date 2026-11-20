@@ -75,10 +75,14 @@ npm run dev
 
 ```bash
 cp .env.example .env
+# 必须先把 SECRET_KEY 换成强随机值，否则服务拒绝启动
 docker compose -f deploy/docker-compose.yml up -d --build
 docker compose -f deploy/docker-compose.yml exec backend alembic upgrade head
 curl http://localhost/health
 ```
+
+运行后端测试前需配置独立的 `TEST_DATABASE_URL`，说明见
+[`docs/test-database-setup.md`](docs/test-database-setup.md)。
 
 ## 文档索引
 
@@ -105,4 +109,7 @@ curl http://localhost/health
 
 ## 当前状态
 
-处于 Sprint 1（基础系统：认证、库存、临期规则、首页）。执行记录以 `10_工程管理台账.xlsx` 为准。
+Sprint 3 进行中。已实现：邮箱注册/登录与 JWT、用户偏好、库存 CRUD/归档/临期/审计流水、
+首页汇总、计划详情与确认扣减（幂等 + 行锁 + 乐观锁）、采购清单（状态机/软删除）与计划导入。
+AI 自然语言录入与膳食规划尚未实现（C 组）；前端仍为原型骨架，部分页面待接入真实 API。
+执行记录以 `10_工程管理台账.xlsx` 为准。
