@@ -44,6 +44,8 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - run: pip install -r requirements.txt
       - run: pip install ruff mypy pytest pytest-cov
+      - name: 执行数据库迁移
+        run: alembic upgrade head
       - name: Ruff 检查
         run: ruff check app tests
       - name: 单元与 API 测试
