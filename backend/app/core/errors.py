@@ -12,6 +12,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.core.logging import format_exception_for_log
+
 
 class AppError(Exception):
     """业务异常基类。"""
@@ -63,6 +65,12 @@ class ConflictError(AppError):
 class MethodNotAllowedError(AppError):
     status_code = 405
     code = "METHOD_NOT_ALLOWED"
+
+
+class HttpError(AppError):
+    """未映射的 HTTP 状态；handler 会用原始状态码覆盖。"""
+
+    code = "HTTP_ERROR"
 
 
 class InternalServerError(AppError):
@@ -141,10 +149,14 @@ async def http_exception_handler(
         return await app_error_handler(
             request, error_type(str(exc.detail)), headers=exc.headers
         )
-    return await app_error_handler(request, AppError(str(exc.detail)), headers=exc.headers)
+    error = HttpError(str(exc.detail))
+    error.status_code = exc.status_code
+    return await app_error_handler(request, error, headers=exc.headers)
 
 
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Return the public error envelope without exposing unexpected exception details."""
-    logging.getLogger(__name__).exception("Unhandled application error", exc_info=exc)
+    logging.getLogger(__name__).error(
+        "Unhandled application error\n%s", format_exception_for_log(exc)
+    )
     return await app_error_handler(request, InternalServerError("Internal server error"))

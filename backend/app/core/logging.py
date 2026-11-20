@@ -6,6 +6,7 @@
 import logging
 import re
 import sys
+import traceback
 
 from app.core.request_id import get_request_id
 
@@ -25,6 +26,12 @@ def redact_sensitive_text(value: str) -> str:
     redacted = key_value_pattern.sub(r"\1=[REDACTED]", redacted)
     redacted = database_url_pattern.sub("postgresql://[REDACTED]@", redacted)
     return redacted
+
+
+def format_exception_for_log(exc: BaseException) -> str:
+    """Format a traceback with credentials redacted before it reaches the log."""
+    trace = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    return redact_sensitive_text(trace)
 
 
 class RequestIdFilter(logging.Filter):
