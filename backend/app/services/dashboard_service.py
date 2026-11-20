@@ -6,9 +6,9 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.domain.expiry import current_date
 from app.repositories.dashboard_repository import DashboardRepository
 from app.schemas.dashboard import DashboardSummaryResponse
-from app.services.inventory_service import current_date
 
 
 class DashboardService:

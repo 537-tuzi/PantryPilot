@@ -16,12 +16,13 @@ from sqlalchemy import create_engine, delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
+from app.domain.expiry import current_date, inventory_status
 from app.models.ingredient import IngredientCatalog
 from app.models.inventory import InventoryItem, InventoryTransaction
 from app.models.user import User
 from app.repositories.inventory_repository import InventoryRepository
 from app.schemas.inventory import InventoryCreatePayload, InventoryUpdatePayload
-from app.services.inventory_service import InventoryService, current_date, inventory_status
+from app.services.inventory_service import InventoryService
 
 INVENTORY_URL = "/api/v1/inventory"
 
