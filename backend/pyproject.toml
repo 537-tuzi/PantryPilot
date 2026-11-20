@@ -16,6 +16,8 @@ dev = [
 line-length = 100
 target-version = "py310"
 src = ["app", "tests"]
+# 仅排除已经执行过的历史迁移脚本（不可再改）；alembic/env.py 与后续新迁移仍需通过检查
+extend-exclude = ["alembic/versions/20261120_0001_initial_business_schema.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
