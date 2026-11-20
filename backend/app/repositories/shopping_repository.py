@@ -58,7 +58,3 @@ class ShoppingRepository:
     @staticmethod
     def add(db: Session, item: ShoppingItem) -> None:
         db.add(item)
-
-    @staticmethod
-    def delete(db: Session, item: ShoppingItem) -> None:
-        db.delete(item)

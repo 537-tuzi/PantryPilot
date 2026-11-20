@@ -273,9 +273,44 @@ def test_status_update_delete_and_cross_user_protection(
 
     deleted = client.delete(f"/api/v1/shopping-items/{item.id}", headers=headers(user_a))
     assert deleted.status_code == 204
-    assert db_session.get(ShoppingItem, item.id) is None
+    stored = db_session.get(ShoppingItem, item.id)
+    assert stored is not None and stored.status == "cancelled"
     second_delete = client.delete(f"/api/v1/shopping-items/{item.id}", headers=headers(user_a))
-    assert second_delete.status_code == 404
+    assert second_delete.status_code == 204
+
+
+def test_status_state_machine_rejects_invalid_transitions(
+    db_session: Session, client: TestClient
+) -> None:
+    user = make_user(db_session)
+    item = ShoppingItem(
+        user_id=user.id, display_name="Milk", quantity=Decimal("1"), unit="box", status="pending"
+    )
+    db_session.add(item)
+    db_session.flush()
+
+    purchased = client.patch(
+        f"/api/v1/shopping-items/{item.id}", json={"status": "purchased"}, headers=headers(user)
+    )
+    assert purchased.status_code == 200
+
+    reopen = client.patch(
+        f"/api/v1/shopping-items/{item.id}", json={"status": "pending"}, headers=headers(user)
+    )
+    assert reopen.status_code == 409
+    assert reopen.json()["code"] == "STATE_CONFLICT"
+
+    same_status = client.patch(
+        f"/api/v1/shopping-items/{item.id}", json={"status": "purchased"}, headers=headers(user)
+    )
+    assert same_status.status_code == 200
+
+    cancelled = client.delete(f"/api/v1/shopping-items/{item.id}", headers=headers(user))
+    assert cancelled.status_code == 204
+    restore = client.patch(
+        f"/api/v1/shopping-items/{item.id}", json={"status": "purchased"}, headers=headers(user)
+    )
+    assert restore.status_code == 409
 
 
 def test_import_confirmed_missing_ingredients_and_replay(
