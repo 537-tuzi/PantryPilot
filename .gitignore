@@ -1,0 +1,29 @@
+# Local Python environments and tooling
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Build / packaging artifacts
+*.egg-info/
+build/
+dist/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Office temporary lock files
+~$*
+
+# Local SQLite databases (if ever used for scratch testing)
+*.db
+*.db-journal
+
+# Runtime output
+*.log
+coverage.xml
+htmlcov/
