@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, delete, select
+from sqlalchemy import create_engine, delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
@@ -590,10 +590,9 @@ def test_optimistic_lock_blocks_concurrent_database_updates() -> None:
     url = os.environ.get("TEST_DATABASE_URL")
     if not url:
         pytest.skip("TEST_DATABASE_URL is not configured")
-    # The ledger table is owned by pantrypilot_owner; the app account may only SELECT/INSERT.
-    # Cleanup therefore uses an optional maintenance connection, falling back to TEST_DATABASE_URL
-    # in environments where the app account still owns the table (e.g. CI before hardening).
-    maintenance_url = os.environ.get("TEST_MAINTENANCE_DATABASE_URL") or url
+    maintenance_url = os.environ.get("TEST_MAINTENANCE_DATABASE_URL")
+    if not maintenance_url:
+        pytest.skip("TEST_MAINTENANCE_DATABASE_URL is required for committed concurrency cleanup")
 
     engine = create_engine(url, pool_pre_ping=True, future=True)
     session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -663,11 +662,19 @@ def test_optimistic_lock_blocks_concurrent_database_updates() -> None:
             cleanup_engine = create_engine(maintenance_url, pool_pre_ping=True, future=True)
             try:
                 with Session(cleanup_engine) as cleanup:
-                    cleanup.execute(
-                        delete(InventoryTransaction).where(
-                            InventoryTransaction.inventory_item_id == item_id
-                        )
+                    # The app account cannot DELETE ledger rows; this test never writes any,
+                    # so only touch the table when a row actually exists.
+                    ledger_rows = cleanup.scalar(
+                        select(func.count())
+                        .select_from(InventoryTransaction)
+                        .where(InventoryTransaction.inventory_item_id == item_id)
                     )
+                    if ledger_rows:
+                        cleanup.execute(
+                            delete(InventoryTransaction).where(
+                                InventoryTransaction.inventory_item_id == item_id
+                            )
+                        )
                     cleanup.execute(delete(InventoryItem).where(InventoryItem.id == item_id))
                     cleanup.execute(delete(User).where(User.id == user_id))
                     cleanup.commit()

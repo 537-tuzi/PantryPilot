@@ -8,8 +8,10 @@
 
 import os
 from collections.abc import Generator
+from pathlib import Path
 
 import pytest
+from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url
@@ -18,6 +20,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
+
+# Keep test-only database URLs in the ignored repository-root .env file.
+# Explicit process environment values remain higher priority for CI.
+load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)
 
 TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
 
