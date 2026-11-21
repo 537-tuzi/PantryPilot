@@ -6,12 +6,12 @@
 
 from datetime import date
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class StorageLocation(str, Enum):
+class StorageLocation(StrEnum):
     """存储位置。取值与 文档/03 §5 字段校验一致。"""
 
     COLD = "冷藏"
