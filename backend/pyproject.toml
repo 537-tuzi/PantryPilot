@@ -4,6 +4,10 @@ version = "1.1.0"
 description = "PantryPilot 后端 API"
 requires-python = ">=3.11"
 
+# 显式声明包，避免 setuptools 在扁平布局下把 app 与 tests 一起自动发现而报错
+[tool.setuptools.packages.find]
+include = ["app*"]
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",

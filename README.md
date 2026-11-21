@@ -37,7 +37,7 @@ PantryPilot/
 ├── 文档/             01~09 工程文档（需求、设计、测试、部署、验收）
 ├── 产品原型/         可点击低保真 HTML 原型
 ├── 架构图/           draw.io 多页架构与流程图
-├── 10_工程管理台账.xlsx  Backlog / Sprint / RTM / 风险 / 缺陷 / ADR / 测试用例
+├── 10_工程管理台账.xlsx  人员与RACI / Backlog / Sprint / RTM / 风险 / 缺陷 / ADR / 测试用例
 └── 开发规范.md       分支、目录归属、代码与提交流程规范
 ```
 
@@ -61,8 +61,8 @@ dev/{其他四人}   B 组（后端/数据）2 人、C 组（AI/质量工程）2
 ```bash
 # 后端
 cd backend
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+python3 -m venv .venv && source .venv/bin/activate   # 若报 ensurepip 缺失：sudo apt install python3-venv
+pip install -r requirements.txt -r requirements-dev.txt
 uvicorn app.main:app --reload --port 8000
 
 # 前端
@@ -71,6 +71,11 @@ npm install
 npm run dev
 ```
 
+环境变量放在**仓库根目录**的 `.env`（后端从根目录读取）：`cp .env.example .env`
+
+> **环境要求**：后端 **Python 3.11+**（代码使用 `datetime.UTC`）、前端 **Node 20+**、PostgreSQL 16（推荐用 Docker Compose 起）。
+> 本机 Python 低于 3.11 时，直接用容器跑后端：`docker compose -f deploy/docker-compose.yml up -d backend`。
+
 一键启动（含 PostgreSQL）：
 
 ```bash
@@ -78,6 +83,13 @@ cp .env.example .env
 docker compose -f deploy/docker-compose.yml up -d --build
 docker compose -f deploy/docker-compose.yml exec backend alembic upgrade head
 curl http://localhost/health
+```
+
+环境自检：
+
+```bash
+bash scripts/check_env.sh    # 工具链 / Git / .env / 端口 / 后端 / 前端 逐项检查
+bash scripts/bootstrap.sh   # 一键初始化（venv、依赖、.env、数据库、迁移）
 ```
 
 ## 文档索引
@@ -93,7 +105,7 @@ curl http://localhost/health
 | `文档/07_软件测试计划与测试用例.docx` | 测试层级、用例、缺陷分级与退出准则 |
 | `文档/08_部署运维与开源交付手册.docx` | 部署、备份恢复、故障处理、开源规范 |
 | `文档/09_项目验收方案与项目总结模板.docx` | 验收场景、交付物验收、总结模板 |
-| `10_工程管理台账.xlsx` | 执行期唯一台账：Backlog、Sprint、RTM、风险、缺陷、ADR、用例 |
+| `10_工程管理台账.xlsx` | 执行期唯一台账：人员与RACI、Backlog、Sprint、RTM、风险、缺陷、ADR、用例 |
 | `开发规范.md` | 分支、目录归属、代码规范、提交流程、DoD |
 
 ## 使用约束
@@ -105,4 +117,7 @@ curl http://localhost/health
 
 ## 当前状态
 
-处于 Sprint 1（基础系统：认证、库存、临期规则、首页）。执行记录以 `10_工程管理台账.xlsx` 为准。
+准备阶段已完成（立项基线、需求桌面研究、原型、架构与接口基线、仓库骨架与规范、首次部署验证）。
+**Sprint 1（认证、库存、临期规则、首页）尚未开工**，六条开发分支目前都停在初始基线。
+
+执行进度以 `10_工程管理台账.xlsx` 为准；部署环境的验证记录见 `文档/08` 附录 A。

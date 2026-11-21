@@ -30,17 +30,26 @@ PantryPilot（食刻管家）· 团队上手：五个 Git 步骤
 --------------------------------------------------------------------------------
   后端：
     cd backend
-    python3 -m venv .venv && source .venv/bin/activate
-    pip install -r requirements.txt && pip install -e ".[dev]"
+    python3 -m venv .venv && source .venv/bin/activate   # 若报 ensurepip 缺失：sudo apt install python3-venv
+    pip install -r requirements.txt -r requirements-dev.txt   # dev 版含 pytest/ruff/mypy
     uvicorn app.main:app --reload --port 8000      # 健康检查 http://localhost:8000/health
+
+  注意：后端要求 Python 3.11+（代码用到 datetime.UTC）。本机 python3 低于 3.11 时，
+        不要在宿主机跑后端，直接用容器：
+          docker compose -f deploy/docker-compose.yml up -d backend
 
   前端：
     cd frontend && npm install && npm run dev       # http://localhost:5200
 
   数据库（Docker）：
-    cp .env.example .env                              # 本地填写，.env 不会被提交
+    cp .env.example .env                              # 根目录，.env 不会被提交
     docker compose -f deploy/docker-compose.yml up -d db
     docker compose -f deploy/docker-compose.yml exec backend alembic upgrade head
+
+  环境自检（务必跑一次，确认本机配置无误）：
+    bash scripts/check_env.sh            # 完整检查
+    bash scripts/check_env.sh --fast     # 快速检查（跳过前端 lint/类型/测试）
+    期望输出：FAIL 0。出现 FAIL 先按提示修复，不要带着坏环境开工。
 
 【第 3 步】认领目录，按《开发规范.md》第 3 节动手
 --------------------------------------------------------------------------------
@@ -80,7 +89,8 @@ PantryPilot（食刻管家）· 团队上手：五个 Git 步骤
     compare: dev/<你的名字>
 
   PR 描述必须写清：改了什么、为什么、怎么验证。
-  合入条件：CI 绿灯 + 至少 1 名其他成员 Review 通过。
+  合入条件：CI 绿灯（后端检查 + 前端检查）。分支保护的审批人数为 0，作者可以自己批准并合并，
+             但仍建议在 PR 里 @ 一名同伴看一遍；有人留下评论时，必须回复或解决后才能合并。
   合并方式：Merge pull request（Merge commit）。
 
   合入后回到本地同步：

@@ -43,11 +43,13 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
       - run: pip install -r requirements.txt
-      - run: pip install ruff mypy pytest pytest-cov
+      - run: pip install -r requirements-dev.txt
       - name: 执行数据库迁移
         run: alembic upgrade head
       - name: Ruff 检查
         run: ruff check app tests
+      - name: Ruff 格式检查
+        run: ruff format --check app tests
       - name: 单元与 API 测试
         run: pytest
 
@@ -62,7 +64,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - name: ESLint
         run: npm run lint
       - name: 类型检查

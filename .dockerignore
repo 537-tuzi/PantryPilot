@@ -1,0 +1,60 @@
+# Docker 构建上下文排除规则
+# 作用范围：构建上下文根目录为仓库根的镜像（前端镜像 build.context: ..）
+# 目的：避免把 node_modules、密钥、文档等无关内容发送给 Docker daemon
+
+# ---------- 版本控制与 CI ----------
+.git
+.gitignore
+.github
+
+# ---------- 依赖与构建产物 ----------
+**/node_modules
+**/dist
+**/.vite
+**/.venv
+**/venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.coverage
+**/htmlcov
+
+# ---------- 密钥与环境变量（必须排除，避免进入构建上下文或镜像层） ----------
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+secrets
+
+# ---------- 本地数据与备份 ----------
+backups
+dumps
+*.sql
+*.dump
+postgres-data
+data
+
+# ---------- 文档与素材（镜像构建不需要） ----------
+文档
+产品原型
+架构图
+*.docx
+*.xlsx
+*.drawio
+README.md
+CHANGELOG.md
+开发规范.md
+团队上手步骤.txt
+
+# ---------- 日志与临时文件 ----------
+*.log
+*.bak
+*.orig
+*.rej
+.DS_Store

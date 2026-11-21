@@ -15,7 +15,8 @@ from app.core.config import settings
 from app.db.base import Base
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# alembic 的 configparser 会把 % 当插值符，URL 里的百分号需要转义
+config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

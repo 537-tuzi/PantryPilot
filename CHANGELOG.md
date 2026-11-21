@@ -2,6 +2,39 @@
 
 本文件记录 PantryPilot 各版本的变更。格式参考 Keep a Changelog。
 
+## [1.1.2] - 2026-11-21
+
+### 修复
+- **合并团队 main 后实测发现并修复**：前端 `stores/auth.ts` 登录提交 `username`，而后端 `LoginRequest` 要求 `email`，登录与注册必然失败。已改为登录传 `email`、注册传 `username + email + password`，并与 `文档/05` §10 契约同步（实测：注册返回 token、错误凭据 401、无 token 401、携带 token 可访问受保护接口）。
+- `文档/05` §10 认证契约按**已实现代码**重新校准：登录改用 email、有效期改为 `JWT_ACCESS_TOKEN_EXPIRE_MINUTES`（默认 60 分钟）、密码 Argon2id、令牌载荷 `{sub, exp}`。
+- 新增 `backend/requirements-dev.txt`（pytest/pytest-cov/ruff/mypy）：此前文档只让成员装 `requirements.txt`，导致新克隆环境里 `pytest` 缺失、自检脚本与测试无法运行；bootstrap、CI、三份说明文档已统一改为同时安装。
+- `backend/Dockerfile` 复制 `requirements-dev.txt`，使容器内可临时执行测试（此前镜像内无该文件）。
+- `scripts/bootstrap.sh` 补 `ok()` 函数定义（此前报 `ok: 未找到命令`），并在无 docker 组权限时给出可读提示而非直接中断。
+- `scripts/check_env.sh` 增加 Python 版本门禁（< 3.11 判 FAIL，因后端使用 `datetime.UTC`）、pytest 缺失检测、`--fast` 模式。
+
+### 变更
+- 开发规范 / 团队上手步骤 / README 的 Python 基线由 3.10+ 更正为 **3.11+**，与 `pyproject.toml`、Dockerfile、CI 实际版本一致。
+- `.env.example` 合并双方内容：保留团队的 `APP_TIMEZONE`、`JWT_*`、`TEST_*` 配置，并把 `DATABASE_URL` 改为 `localhost`（compose 容器内仍覆盖为 `db:5432`），使宿主机直跑与容器两种方式都可用。
+
+## [1.1.1] - 2026-11-21
+
+### 修复
+- **新增 `.dockerignore` 与 `backend/.dockerignore`**：前端镜像构建上下文原本是仓库根目录，会把 226MB 的 `node_modules`、`.git` 以及 **`.env`（含密钥）** 一并发送给 Docker daemon；现已排除，镜像内确认无 `.env`。
+- `.env.example` 的 `DATABASE_URL` 由容器名 `db` 改为 `localhost`（compose 容器内仍由 `docker-compose.yml` 覆盖为 `db:5432`），修复宿主机直跑后端连不上数据库。
+- `nginx.conf` 补充 `/openapi.json` 代理，此前经 nginx 打开 `/docs` 无法加载接口列表。
+- `backend/app/ai/contracts.py`：`storage_location` 由 `str` 改为 `StorageLocation` 枚举（冷藏/冷冻/常温/自定义），与 `文档/06` §4 契约一致。
+- `scripts/check_env.sh` 新增 `--fast` 模式（跳过前端 lint/类型/测试，约 15 秒），并修正容器段在无 docker 组权限时静默无输出的问题。
+
+### 变更
+- CI 改用 `npm ci`（可重现安装），并新增 `ruff format --check` 检查，与规范中“格式化”要求对齐。
+- `文档/05` 新增“10 认证与令牌契约（2026-11-20 冻结）”，冻结注册/登录请求响应结构、`access_token` 命名、JWT 载荷、有效期与鉴权方式，解除前端 `stores/auth.ts` 的字段猜测。
+- `文档/08` 附录 A 追加 3 条部署验证结果（镜像内容检查、OpenAPI 代理、宿主机直连数据库）。
+- `开发规范.md`、`团队上手步骤.txt`、`README.md` 按实际配置校正：分支保护审批人数为 0（作者可自批自合）、`python3 -m venv` 缺 ensurepip 的提示、`.env` 位于仓库根目录、目标目录布局与归属表。
+- `README.md` 当前状态改为“准备阶段已完成，Sprint 1 尚未开工”，不再夸大为“处于 Sprint 1”。
+
+### 新增
+- `backend/tests/api/test_errors.py`：统一错误响应结构测试（400/409/404 + request_id），此前该全局异常处理路径无任何测试覆盖。
+
 ## [1.1.0] - 2026-11-20
 
 ### 变更

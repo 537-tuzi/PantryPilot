@@ -20,9 +20,7 @@ class DashboardRepository:
             InventoryItem.archived_at.is_(None),
             InventoryItem.quantity > Decimal("0"),
         ]
-        expiring_conditions = and_(
-            *InventoryRepository.status_conditions("expiring", today)
-        )
+        expiring_conditions = and_(*InventoryRepository.status_conditions("expiring", today))
         expired_conditions = and_(*InventoryRepository.status_conditions("expired", today))
         statement = select(
             func.count(InventoryItem.id).label("inventory_count"),

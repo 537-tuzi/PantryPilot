@@ -29,6 +29,9 @@ services:
       - ../.env
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-pantry}:${POSTGRES_PASSWORD:-pantry}@db:5432/${POSTGRES_DB:-pantrypilot}
+    volumes:
+      # 宿主机脚本以只读方式挂入容器，便于执行种子数据
+      - ../scripts:/app/scripts:ro
     depends_on:
       db:
         condition: service_healthy
