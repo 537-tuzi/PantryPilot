@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# 本地环境初始化：创建虚拟环境、安装依赖、准备 .env、启动数据库并迁移。
+# 一键初始化开发环境。
+#
+# 统一原则：后端基线是 Python 3.11+，而 Ubuntu 22.04 只有 3.10（jammy 仅提供 3.11.0rc1），
+# 因此**容器是唯一受支持的后端运行环境**。本脚本优先走容器路径；
+# 只有在 Docker 不可用且宿主机 Python ≥ 3.11 时，才退回宿主机 venv 方式。
+#
 # 用法：bash scripts/bootstrap.sh
 set -euo pipefail
 
@@ -11,62 +16,66 @@ ok()   { printf '\033[0;32m[OK]\033[0m %s\n' "$1"; }
 warn() { printf '\033[0;33m[!]\033[0m %s\n' "$1"; }
 die()  { printf '\033[0;31m[x]\033[0m %s\n' "$1" >&2; exit 1; }
 
-info "检查 Python 与 venv 可用性"
-command -v python3 >/dev/null || die "未找到 python3"
-python3 -c 'import sys; print("    Python", sys.version.split()[0])'
-if ! python3 -c 'import ensurepip' >/dev/null 2>&1; then
-  warn "当前 Python 缺少 ensurepip，python3 -m venv 会失败"
-  warn "请先安装：sudo apt install python3-venv  （Debian/Ubuntu）"
-  warn "或改用系统包：sudo apt install python3-pip python3-venv"
-  die "缺少 venv 组件，已停止"
-fi
-
-info "准备环境变量"
+info "检查环境变量"
 if [ ! -f .env ]; then
   cp .env.example .env
-  echo "    已生成 .env，请按需填写 SECRET_KEY / LLM_API_KEY 等（.env 不会被提交）"
+  echo "    已生成 .env，请务必修改 SECRET_KEY（默认占位符会导致服务拒绝启动）"
+  python3 - <<'EOF' 2>/dev/null || true
+import secrets
+from pathlib import Path
+p = Path(".env")
+s = p.read_text()
+s = s.replace("SECRET_KEY=change-me-to-a-long-random-string",
+              f"SECRET_KEY={secrets.token_urlsafe(48)}")
+p.write_text(s)
+EOF
+  ok "已生成 .env 并写入随机 SECRET_KEY"
 else
-  echo "    .env 已存在，跳过"
+  echo "    .env 已存在"
 fi
 
-info "初始化后端虚拟环境"
+if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  info "容器模式：构建镜像、启动服务、迁移开发库与测试库"
+  bash "$ROOT_DIR/scripts/dev.sh" up
+  bash "$ROOT_DIR/scripts/dev.sh" test-db
+  ok "容器环境就绪"
+  cat <<'EOF'
+
+下一步：
+  开发：bash scripts/dev.sh up        启动服务（后端 http://localhost:8000，前端 http://localhost）
+        bash scripts/dev.sh test      在容器内跑全部后端测试
+        bash scripts/dev.sh logs      看日志
+  前端热更新（可选）：cd frontend && npm install && npm run dev   # http://localhost:5200
+  自检：bash scripts/check_env.sh
+EOF
+  exit 0
+fi
+
+warn "Docker 不可用（未安装或无权限）。安装：sudo bash scripts/install_docker.sh，之后 newgrp docker"
+if ! python3 -c 'import sys; raise SystemExit(0 if sys.version_info[:2] >= (3, 11) else 1)' 2>/dev/null; then
+  die "宿主机 Python 低于 3.11 且无 Docker，后端无法运行。请安装 Docker 或 Python 3.11+"
+fi
+
+info "宿主机模式：创建虚拟环境并安装依赖"
 cd "$ROOT_DIR/backend"
 python3 -m venv .venv
 # shellcheck disable=SC1091
 source .venv/bin/activate
 pip install --upgrade pip >/dev/null
-pip install -r requirements.txt
-# 开发工具单独安装，避免可编辑安装在不同 setuptools 版本下解析元数据失败
-pip install -r requirements-dev.txt
+pip install -r requirements.txt -r requirements-dev.txt
+ok "依赖安装完成"
+cd "$ROOT_DIR"
 
 info "初始化前端依赖"
 cd "$ROOT_DIR/frontend"
 npm install --no-audit --no-fund
-
-info "启动数据库并执行迁移"
-cd "$ROOT_DIR"
-if ! command -v docker >/dev/null 2>&1; then
-  warn "未检测到 docker，跳过数据库启动"
-  warn "安装方式：sudo bash scripts/install_docker.sh"
-  warn "本机可自行准备 PostgreSQL 后执行：cd backend && source .venv/bin/activate && alembic upgrade head"
-elif ! docker info >/dev/null 2>&1; then
-  warn "无权访问 docker daemon（用户刚被加入 docker 组但当前会话未生效）"
-  warn "请执行 newgrp docker 或注销后重新登录，再重新运行本脚本"
-  warn "跳过数据库启动；其余依赖已安装完成，可继续开发"
-else
-  docker compose -f deploy/docker-compose.yml up -d db
-  docker compose -f deploy/docker-compose.yml run --rm backend alembic upgrade head
-  ok "数据库已启动，迁移已执行"
-fi
-
-info "环境自检"
-bash "$ROOT_DIR/scripts/check_env.sh" || true
+ok "前端依赖安装完成"
 
 cat <<'EOF'
 
-初始化完成。
-  后端：cd backend && source .venv/bin/activate && uvicorn app.main:app --reload
+宿主机模式就绪。
+  后端：cd backend && source .venv/bin/activate && uvicorn app.main:app --reload --port 8000
   前端：cd frontend && npm run dev            # http://localhost:5200
-  全部：docker compose -f deploy/docker-compose.yml up -d --build
+  测试：cd backend && python -m pytest        # 需要先配置 TEST_DATABASE_URL 并迁移测试库
   自检：bash scripts/check_env.sh
 EOF

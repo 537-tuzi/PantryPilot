@@ -2,6 +2,30 @@
 
 本文件记录 PantryPilot 各版本的变更。格式参考 Keep a Changelog。
 
+## [1.2.0] - 2026-11-21
+
+### 统一：容器成为后端唯一受支持的运行环境
+
+通读当前后端实现后确认：团队已把基线定为 **Python 3.11+**（`datetime.UTC`）、`python:3.11-slim` 镜像、
+CI 同版本，且测试夹具强制 `TEST_DATABASE_URL` 指向 `pantrypilot_test`、迁移必须先行。
+而 Ubuntu 22.04 自带 3.10、jammy 仅有 3.11.0**rc1**（实测装过并卸载，不适合做开发基线），
+因此**宿主机 Python 版本不该再是任何人的阻塞项**。据此统一：
+
+- 新增 `scripts/dev.sh`：所有后端操作的唯一入口（up / down / ps / logs / migrate / test-db / test / seed / backup / restore / check / shell / openapi），全部在容器内完成。
+- `deploy/docker-compose.yml` 新增 `backend-test` 服务（带开发依赖的镜像 + 源码挂载），容器内跑 pytest 不用重装依赖。
+- `backend/Dockerfile` 增加 `INSTALL_DEV` 构建参数，一份 Dockerfile 同时服务运行与测试。
+- `scripts/bootstrap.sh` 改为容器优先：Docker 可用即走容器路径；仅当无 Docker 且宿主机 Python ≥ 3.11 时退回 venv 方式。
+- `scripts/check_env.sh` 改为容器优先：宿主机 Python < 3.11 记 WARN 而非 FAIL；新增 compose 配置校验、后端容器与健康检查项。
+- `开发规范.md` 第 10 节、`团队上手步骤.txt`、`README.md` 全部改写为容器优先流程。
+
+### 修复
+
+- `scripts/seed.py`：三处 INSERT 缺主键 `id`。模型的 UUID 主键是 Python 侧 `default=uuid4`、数据库无默认值，
+  裸 SQL 插入必然报 `null value in column "id" ... violates not-null constraint`。已由 Python 生成 id 传入，
+  实测演示账号可登录、错密码 401、库存状态正确。
+- `docs/test-database-setup.md`：修正步骤顺序（授权脚本按表级权限授权，**必须先迁移出业务表**，
+  原顺序会报 `relation "users" does not exist`），并接入 `scripts/dev.sh test-db`。
+
 ## [1.1.2] - 2026-11-21
 
 ### 修复

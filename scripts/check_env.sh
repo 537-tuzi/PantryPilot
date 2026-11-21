@@ -27,18 +27,29 @@ bad()  { printf '  \033[0;31m[FAIL]\033[0m %s\n' "$1"; FAIL=$((FAIL+1)); }
 head() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 
 head "1. 工具链"
-command -v python3 >/dev/null && ok "python3 $(python3 -V 2>&1 | cut -d' ' -f2)" || bad "未安装 python3"
+command -v python3 >/dev/null && ok "python3 $(python3 -V 2>&1 | cut -d' ' -f2)" || warn "未安装 python3（容器模式下非必需）"
 PYVER=$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/null || echo 0.0)
+HAS_DOCKER=0
+command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1 && HAS_DOCKER=1
 if python3 -c 'import sys; raise SystemExit(0 if sys.version_info[:2] >= (3, 11) else 1)' 2>/dev/null; then
-  ok "Python 版本满足要求（>= 3.11）"
+  ok "宿主机 Python $PYVER 满足 3.11+（可在宿主机直接跑后端）"
+elif [ "$HAS_DOCKER" -eq 1 ]; then
+  warn "宿主机 Python $PYVER < 3.11，但容器可用 —— 后端请用容器跑：bash scripts/dev.sh up"
 else
-  bad "Python $PYVER 低于项目基线 3.11（backend 使用 datetime.UTC，3.11+ 才有）"
-  echo "         → 解决：Docker 内运行（compose 已用 python:3.11-slim），或自行安装 Python 3.11+ 并重建 venv"
+  bad "宿主机 Python $PYVER < 3.11 且无 Docker：后端无法运行（需 Python 3.11+ 或 Docker）"
 fi
 command -v node >/dev/null && ok "node $(node -v)" || bad "未安装 node（需要 20+）"
 command -v npm >/dev/null && ok "npm $(npm -v)" || bad "未安装 npm"
-command -v docker >/dev/null && ok "docker $(docker -v 2>/dev/null | cut -d' ' -f3 | tr -d ',')" \
-  || warn "未安装 docker，无法执行一键部署与备份恢复"
+if [ "$HAS_DOCKER" -eq 1 ]; then
+  ok "docker $(docker -v 2>/dev/null | cut -d' ' -f3 | tr -d ',') 可用"
+  if docker compose -f deploy/docker-compose.yml config >/dev/null 2>&1; then
+    ok "compose 配置有效"
+  else
+    bad "compose 配置无效：docker compose -f deploy/docker-compose.yml config"
+  fi
+else
+  warn "Docker 不可用（未安装或无权限）：执行 sudo bash scripts/install_docker.sh 后 newgrp docker"
+fi
 
 head "2. Git 状态"
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
@@ -92,47 +103,41 @@ for port in 5200 8000 5432; do
 done
 
 head "5. 后端"
-# 优先使用项目虚拟环境（backend/.venv），否则用系统 python3
-# 注意：必须是绝对路径——下面的检查会先 cd backend 再执行
-PY="python3"
-if [ -x "$ROOT_DIR/backend/.venv/bin/python" ]; then
-  PY="$ROOT_DIR/backend/.venv/bin/python"
-  ok "使用项目虚拟环境 backend/.venv"
+# 容器是唯一受支持的后端运行环境；宿主机 venv 仅用于 IDE 提示
+if [ "$HAS_DOCKER" -eq 1 ]; then
+  if docker compose -f deploy/docker-compose.yml ps --status running --services 2>/dev/null | grep -q backend; then
+    ok "后端容器运行中"
+    if curl -fsS http://localhost:8000/health >/dev/null 2>&1; then
+      ok "后端健康检查通过（http://localhost:8000/health）"
+    else
+      warn "后端容器在跑但健康检查未通过，看日志：bash scripts/dev.sh logs backend"
+    fi
+  else
+    warn "后端容器未启动：bash scripts/dev.sh up"
+  fi
 else
-  warn "未找到 backend/.venv，执行：bash scripts/bootstrap.sh"
+  warn "无 Docker，跳过容器侧检查"
 fi
 
-if (cd backend && "$PY" -c 'import fastapi, sqlalchemy, alembic' >/dev/null 2>&1); then
-  ok "依赖已安装（fastapi / sqlalchemy / alembic）"
+# 宿主机侧（仅当 Python 3.11+ 且有 venv 时才有意义）
+if python3 -c 'import sys; raise SystemExit(0 if sys.version_info[:2] >= (3, 11) else 1)' 2>/dev/null; then
+  PY="python3"
+  if [ -x "$ROOT_DIR/backend/.venv/bin/python" ]; then
+    PY="$ROOT_DIR/backend/.venv/bin/python"
+    ok "使用项目虚拟环境 backend/.venv"
+  fi
+  IMPORT_OUT="$(mktemp)"
+  if (cd backend && "$PY" -c 'from app.main import app' >"$IMPORT_OUT" 2>&1); then
+    ok "应用可正常导入（app.main）"
+  elif grep -q "is not installed" "$IMPORT_OUT"; then
+    warn "依赖缺失，执行：cd backend && pip install -r requirements.txt -r requirements-dev.txt"
+  else
+    warn "宿主机导入失败（不影响容器运行）：$(tail -1 "$IMPORT_OUT")"
+  fi
+  rm -f "$IMPORT_OUT"
 else
-  warn "依赖未安装，执行：cd backend && pip install -r requirements.txt -r requirements-dev.txt"
+  echo "  （宿主机 Python < 3.11，跳过宿主机侧检查——容器模式下不需要）"
 fi
-
-IMPORT_OUT="$(mktemp)"
-if (cd backend && "$PY" -c 'from app.main import app' >"$IMPORT_OUT" 2>&1); then
-  ok "应用可正常导入（app.main）"
-elif grep -q "cannot import name 'UTC'" "$IMPORT_OUT"; then
-  bad "应用导入失败：当前 Python 低于 3.11（datetime.UTC 需 3.11+），改用容器运行"
-elif grep -q "is not installed" "$IMPORT_OUT"; then
-  bad "应用导入失败：缺少依赖，执行 cd backend && pip install -r requirements.txt -r requirements-dev.txt"
-else
-  bad "应用导入失败，执行：cd backend && $PY -c 'from app.main import app' 查看报错"
-fi
-rm -f "$IMPORT_OUT"
-
-PYTEST_OUT="$(mktemp)"
-if (cd backend && "$PY" -m pytest -o addopts= -q >"$PYTEST_OUT" 2>&1); then
-  ok "后端测试通过"
-elif grep -q "No module named pytest" "$PYTEST_OUT"; then
-  warn "后端测试未运行：缺少 pytest，执行 cd backend && pip install -r requirements-dev.txt"
-elif grep -q "cannot import name 'UTC'" "$PYTEST_OUT"; then
-  bad "后端测试无法运行：当前 Python 低于 3.11（datetime.UTC 需 3.11+），改用容器执行"
-elif grep -q "is not installed" "$PYTEST_OUT"; then
-  bad "后端测试无法运行：缺少依赖，执行 cd backend && pip install -r requirements.txt -r requirements-dev.txt"
-else
-  bad "后端测试未通过，执行 cd backend && $PY -m pytest 查看详情"
-fi
-rm -f "$PYTEST_OUT"
 
 head "6. 前端"
 if [ "$FAST" -eq 1 ]; then
@@ -150,15 +155,11 @@ else
 fi
 
 head "7. 容器"
-if command -v docker >/dev/null 2>&1; then
-  if docker info >/dev/null 2>&1; then
-    docker compose -f deploy/docker-compose.yml ps --format '    {{.Service}}: {{.State}}' 2>/dev/null \
-      || echo "    （未启动 compose 服务）"
-  else
-    warn "无权访问 docker daemon：执行 newgrp docker 或重新登录后重试"
-  fi
+if [ "$HAS_DOCKER" -eq 1 ]; then
+  docker compose -f deploy/docker-compose.yml ps --format '    {{.Service}}: {{.State}}' 2>/dev/null \
+    || echo "    （未启动 compose 服务，执行：bash scripts/dev.sh up）"
 else
-  warn "未安装 docker"
+  warn "Docker 不可用，容器侧检查已跳过"
 fi
 
 printf '\n\033[1m结果：PASS %d / WARN %d / FAIL %d\033[0m\n' "$PASS" "$WARN" "$FAIL"

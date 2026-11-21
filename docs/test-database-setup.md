@@ -9,6 +9,43 @@
 回退到 `pantrypilot_app`。未配置该变量时，这两项测试会明确跳过，而不会使用应用账号
 删除任何流水。
 
+## 一键准备（推荐）
+
+```bash
+bash scripts/dev.sh test-db    # 建库 → 授权维护账号 → 迁移测试库
+bash scripts/dev.sh test       # 准备测试库并在容器内跑 pytest
+```
+
+`test-db` 内部固定按 **建库 → 授权维护账号 → 迁移测试库** 的顺序执行。
+顺序不可颠倒：授权脚本按表级权限授权，**必须先有业务表存在**，
+否则会报 `relation "users" does not exist`。
+
+需要的两个变量写在仓库根目录 `.env`（不要提交到 Git）：
+
+```
+TEST_DATABASE_URL=postgresql+psycopg://pantry:pantry@localhost:5432/pantrypilot_test
+TEST_MAINTENANCE_DATABASE_URL=postgresql+psycopg://pantrypilot_test_maintenance:<密码>@localhost:5432/pantrypilot_test
+```
+
+容器内运行时，`scripts/dev.sh` 会自动把这两个连接串的主机名改写为 compose 服务名 `db`，
+无需手工区分宿主机与容器。
+
+## 手工准备（需要排查时）
+
+```bash
+# 1. 建测试库
+docker compose -f deploy/docker-compose.yml exec -T db \
+  psql -U pantry -d postgres -c "CREATE DATABASE pantrypilot_test"
+
+# 2. 对测试库执行迁移（业务表必须先存在）
+docker compose -f deploy/docker-compose.yml --profile test run --rm -T backend-test alembic upgrade head
+
+# 3. 授权维护账号（在迁移之后执行）
+docker compose -f deploy/docker-compose.yml exec -T db \
+  psql -U pantry -d postgres -v maintenance_password='本地安全输入的密码' \
+  -f /scripts/provision-test-maintenance-role.sql
+```
+
 ## 初始化维护账号
 
 PostgreSQL 管理员在本机安全设置密码后，执行
