@@ -2,6 +2,19 @@
 
 本文件记录 PantryPilot 各版本的变更。格式参考 Keep a Changelog。
 
+## [1.2.1] - 2026-11-21
+
+### 配置与文档按实际运行状态校准
+
+- `.env.example`：补齐 compose 实际读取的 `POSTGRES_*` / 端口变量，填好 `TEST_DATABASE_URL`（pantrypilot_test），
+  并说明 `TEST_MAINTENANCE_DATABASE_URL` 留空时相关并发测试自动跳过。
+- `文档/08` 环境变量表：与 `app/core/config.py` 的 Settings 字段及 compose 变量逐项对齐（8 项 → 17 项）。
+- `文档/05` API 清单：与运行中的 OpenAPI 逐条对齐，16 个端点标注「已实现 / 待实现（Sprint 2）」。
+- `文档/04` 模块划分：补「实现位置」列，指向实际 endpoint / service / repository / model 文件。
+- `文档/07`：补充可执行用例位置（`backend/tests/`）与当前 100 用例全通过的事实。
+- 台账：Backlog 状态按实现情况更新、Sprint 进度更新、新登记两个实跑发现的 S1 缺陷、
+  R-04/R-06/R-09 状态更新为已缓解。
+
 ## [1.2.0] - 2026-11-21
 
 ### 统一：容器成为后端唯一受支持的运行环境
