@@ -39,6 +39,7 @@ _bootstrap_import_path()
 from sqlalchemy import inspect, text  # noqa: E402
 
 from app.core.config import settings  # noqa: E402
+from app.core.security import hash_password  # noqa: E402
 from app.db.session import engine  # noqa: E402
 
 DEMO_USERNAME = "demo"
@@ -81,17 +82,21 @@ def seed() -> None:
                     """
                     INSERT INTO users (username, email, password_hash, is_active, created_at, updated_at)
                     VALUES (:username, :email, :password_hash, true, now(), now())
-                    ON CONFLICT DO NOTHING
+                    ON CONFLICT (username) DO UPDATE
+                    SET email = EXCLUDED.email,
+                        password_hash = EXCLUDED.password_hash,
+                        is_active = true,
+                        updated_at = now()
                     """
                 ),
                 {
                     "username": DEMO_USERNAME,
                     "email": DEMO_EMAIL,
-                    # 占位哈希；正式实现应使用 app.core.security 的哈希函数
-                    "password_hash": "REPLACE_WITH_ARGON2_HASH",
+                    # 使用与应用登录一致的 Argon2id 哈希，不写入明文密码。
+                    "password_hash": hash_password(DEMO_PASSWORD),
                 },
             )
-            print("已写入演示账户（需在正式实现中补齐密码哈希）")
+            print("已写入演示账户")
 
         if table_exists(inspector, "ingredient_catalog"):
             for name, category, unit, *_ in INGREDIENTS:
@@ -121,10 +126,10 @@ def seed() -> None:
                         """
                         INSERT INTO inventory_items
                             (user_id, display_name, quantity, unit, purchase_date, expiry_date,
-                             storage_location, created_at, updated_at)
+                             storage_location, version, created_at, updated_at)
                         VALUES
                             (:user_id, :name, :qty, :unit, :purchase_date, :expiry_date,
-                             :location, now(), now())
+                             :location, 1, now(), now())
                         """
                     ),
                     {

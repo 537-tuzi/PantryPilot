@@ -46,6 +46,7 @@ postgres-data/
 
 # ---------- 备份与转储 ----------
 *.sql
+!scripts/*.sql
 *.sql.gz
 *.dump
 backup/

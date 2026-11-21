@@ -1,3 +1,4 @@
 """业务域端点。每个业务域一个文件。"""
 
 __all__: list[str] = []
+"""Versioned API endpoint modules."""
