@@ -92,30 +92,45 @@ for port in 5200 8000 5432; do
 done
 
 head "5. 后端"
-if python3 -c 'import fastapi, sqlalchemy, alembic' >/dev/null 2>&1; then
+# 优先使用项目虚拟环境（backend/.venv），否则用系统 python3
+# 注意：必须是绝对路径——下面的检查会先 cd backend 再执行
+PY="python3"
+if [ -x "$ROOT_DIR/backend/.venv/bin/python" ]; then
+  PY="$ROOT_DIR/backend/.venv/bin/python"
+  ok "使用项目虚拟环境 backend/.venv"
+else
+  warn "未找到 backend/.venv，执行：bash scripts/bootstrap.sh"
+fi
+
+if (cd backend && "$PY" -c 'import fastapi, sqlalchemy, alembic' >/dev/null 2>&1); then
   ok "依赖已安装（fastapi / sqlalchemy / alembic）"
 else
   warn "依赖未安装，执行：cd backend && pip install -r requirements.txt -r requirements-dev.txt"
 fi
-if python3 -c 'import pytest' >/dev/null 2>&1; then
-  ok "开发依赖已安装（pytest / ruff）"
-else
-  warn "开发依赖未安装，执行：cd backend && pip install -r requirements-dev.txt（否则无法跑测试）"
-fi
-if (cd backend && python3 -c 'from app.main import app' >/dev/null 2>&1); then
+
+IMPORT_OUT="$(mktemp)"
+if (cd backend && "$PY" -c 'from app.main import app' >"$IMPORT_OUT" 2>&1); then
   ok "应用可正常导入（app.main）"
+elif grep -q "cannot import name 'UTC'" "$IMPORT_OUT"; then
+  bad "应用导入失败：当前 Python 低于 3.11（datetime.UTC 需 3.11+），改用容器运行"
+elif grep -q "is not installed" "$IMPORT_OUT"; then
+  bad "应用导入失败：缺少依赖，执行 cd backend && pip install -r requirements.txt -r requirements-dev.txt"
 else
-  bad "应用导入失败，执行：cd backend && python3 -c 'from app.main import app' 查看报错"
+  bad "应用导入失败，执行：cd backend && $PY -c 'from app.main import app' 查看报错"
 fi
+rm -f "$IMPORT_OUT"
+
 PYTEST_OUT="$(mktemp)"
-if (cd backend && python3 -m pytest -o addopts= -q >"$PYTEST_OUT" 2>&1); then
+if (cd backend && "$PY" -m pytest -o addopts= -q >"$PYTEST_OUT" 2>&1); then
   ok "后端测试通过"
 elif grep -q "No module named pytest" "$PYTEST_OUT"; then
   warn "后端测试未运行：缺少 pytest，执行 cd backend && pip install -r requirements-dev.txt"
 elif grep -q "cannot import name 'UTC'" "$PYTEST_OUT"; then
   bad "后端测试无法运行：当前 Python 低于 3.11（datetime.UTC 需 3.11+），改用容器执行"
+elif grep -q "is not installed" "$PYTEST_OUT"; then
+  bad "后端测试无法运行：缺少依赖，执行 cd backend && pip install -r requirements.txt -r requirements-dev.txt"
 else
-  bad "后端测试未通过，执行 cd backend && python3 -m pytest 查看详情"
+  bad "后端测试未通过，执行 cd backend && $PY -m pytest 查看详情"
 fi
 rm -f "$PYTEST_OUT"
 
