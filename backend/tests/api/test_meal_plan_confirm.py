@@ -166,9 +166,7 @@ def test_confirm_success(db_session: Session, client: TestClient) -> None:
     assert db_session.get(InventoryItem, inventory_item.id).quantity == Decimal("6.000")
     assert db_session.get(MealPlan, plan.id).status == "confirmed"
     assert db_session.get(MealPlan, plan.id).confirmed_at is not None
-    assert db_session.get(MealPlanIngredient, ingredients[0].id).actual_quantity == Decimal(
-        "4.000"
-    )
+    assert db_session.get(MealPlanIngredient, ingredients[0].id).actual_quantity == Decimal("4.000")
 
 
 # 2. 多条库存记录扣减
@@ -286,9 +284,7 @@ def test_one_ingredient_across_batches(db_session: Session, client: TestClient) 
 
 
 # 6. 库存不足整体回滚
-def test_insufficient_stock_rolls_back_everything(
-    db_session: Session, client: TestClient
-) -> None:
+def test_insufficient_stock_rolls_back_everything(db_session: Session, client: TestClient) -> None:
     user = make_user(db_session)
     enough = make_inventory(db_session, user, "10.000", "g", "Tomato")
     short = make_inventory(db_session, user, "0.500", "g", "Basil")
@@ -313,9 +309,12 @@ def test_insufficient_stock_rolls_back_everything(
     assert db_session.get(InventoryItem, short.id).quantity == Decimal("0.500")
     assert db_session.get(MealPlan, plan.id).status == "draft"
     assert transaction_rows(db_session, user) == []
-    assert db_session.scalar(
-        select(MealPlanConfirmation).where(MealPlanConfirmation.meal_plan_id == plan.id)
-    ) is None
+    assert (
+        db_session.scalar(
+            select(MealPlanConfirmation).where(MealPlanConfirmation.meal_plan_id == plan.id)
+        )
+        is None
+    )
 
 
 # 7. 单位不匹配
@@ -378,9 +377,7 @@ def test_idempotent_replay(db_session: Session, client: TestClient) -> None:
     assert (
         len(
             db_session.scalars(
-                select(MealPlanConfirmation).where(
-                    MealPlanConfirmation.idempotency_key == key
-                )
+                select(MealPlanConfirmation).where(MealPlanConfirmation.idempotency_key == key)
             ).all()
         )
         == 1
@@ -388,9 +385,7 @@ def test_idempotent_replay(db_session: Session, client: TestClient) -> None:
 
 
 # 11. 相同 Key 不同请求内容
-def test_same_key_different_payload_conflicts(
-    db_session: Session, client: TestClient
-) -> None:
+def test_same_key_different_payload_conflicts(db_session: Session, client: TestClient) -> None:
     user = make_user(db_session)
     inventory_item = make_inventory(db_session, user, "10.000")
     plan, ingredients = make_plan(db_session, user, [(inventory_item, "Tomato", "4.000", "g")])
@@ -405,9 +400,7 @@ def test_same_key_different_payload_conflicts(
 
 
 # 12. 已确认计划使用不同 Key 再次确认
-def test_already_confirmed_with_new_key_conflicts(
-    db_session: Session, client: TestClient
-) -> None:
+def test_already_confirmed_with_new_key_conflicts(db_session: Session, client: TestClient) -> None:
     user = make_user(db_session)
     inventory_item = make_inventory(db_session, user, "10.000")
     plan, ingredients = make_plan(db_session, user, [(inventory_item, "Tomato", "4.000", "g")])
@@ -422,9 +415,7 @@ def test_already_confirmed_with_new_key_conflicts(
 
 
 # 13. 并发相同 Key 不会重复扣减
-def test_repeated_same_key_only_deducts_once(
-    db_session: Session, client: TestClient
-) -> None:
+def test_repeated_same_key_only_deducts_once(db_session: Session, client: TestClient) -> None:
     user = make_user(db_session)
     inventory_item = make_inventory(db_session, user, "10.000")
     plan, ingredients = make_plan(db_session, user, [(inventory_item, "Tomato", "4.000", "g")])
@@ -497,9 +488,7 @@ def test_row_lock_serializes_concurrent_confirmations(db_session: Session) -> No
             )
             with pytest.raises(Exception) as excinfo:
                 waiter.execute(
-                    text(
-                        "SELECT id FROM meal_plans WHERE id = :plan_id FOR UPDATE NOWAIT"
-                    ),
+                    text("SELECT id FROM meal_plans WHERE id = :plan_id FOR UPDATE NOWAIT"),
                     {"plan_id": plan_id},
                 )
             assert "lock" in str(excinfo.value).lower()
@@ -516,8 +505,10 @@ def test_row_lock_serializes_concurrent_confirmations(db_session: Session) -> No
         cleanup = cleanup_sessionmaker()
         try:
             cleanup.execute(
-                text("DELETE FROM meal_plan_ingredients WHERE meal_plan_item_id IN "
-                     "(SELECT id FROM meal_plan_items WHERE meal_plan_id = :plan_id)"),
+                text(
+                    "DELETE FROM meal_plan_ingredients WHERE meal_plan_item_id IN "
+                    "(SELECT id FROM meal_plan_items WHERE meal_plan_id = :plan_id)"
+                ),
                 {"plan_id": plan_id},
             )
             cleanup.execute(
@@ -556,15 +547,11 @@ def test_cannot_confirm_other_users_plan(db_session: Session, client: TestClient
 
 
 # 16. 用户 A 无法扣减用户 B 的库存
-def test_cannot_deduct_other_users_inventory(
-    db_session: Session, client: TestClient
-) -> None:
+def test_cannot_deduct_other_users_inventory(db_session: Session, client: TestClient) -> None:
     owner_a = make_user(db_session)
     owner_b = make_user(db_session)
     inventory_b = make_inventory(db_session, owner_b, "10.000", "g", "Basil")
-    plan_a, ingredients = make_plan(
-        db_session, owner_a, [(inventory_b, "Basil", "1.000", "g")]
-    )
+    plan_a, ingredients = make_plan(db_session, owner_a, [(inventory_b, "Basil", "1.000", "g")])
 
     response = confirm(client, owner_a, plan_a, [item_payload(ingredients[0], "1.000")])
 
@@ -670,9 +657,7 @@ def test_transactions_share_operation_id(db_session: Session, client: TestClient
     assert {row.source_type for row in rows} == {"ai"}
 
 
-def test_manual_plan_uses_manual_source_type(
-    db_session: Session, client: TestClient
-) -> None:
+def test_manual_plan_uses_manual_source_type(db_session: Session, client: TestClient) -> None:
     user = make_user(db_session)
     inventory_item = make_inventory(db_session, user, "10.000")
     plan, ingredients = make_plan(
@@ -686,9 +671,7 @@ def test_manual_plan_uses_manual_source_type(
     assert {row.source_type for row in transaction_rows(db_session, user)} == {"manual"}
 
 
-def test_import_plan_uses_import_source_type(
-    db_session: Session, client: TestClient
-) -> None:
+def test_import_plan_uses_import_source_type(db_session: Session, client: TestClient) -> None:
     user = make_user(db_session)
     inventory_item = make_inventory(db_session, user, "10.000")
     plan, ingredients = make_plan(
@@ -804,9 +787,7 @@ def test_archived_inventory_rejected(db_session: Session, client: TestClient) ->
     user = make_user(db_session)
     inventory_item = make_inventory(db_session, user, "10.000")
     plan, ingredients = make_plan(db_session, user, [(inventory_item, "Tomato", "1.000", "g")])
-    inventory_item.archived_at = __import__("datetime").datetime.now(
-        __import__("datetime").UTC
-    )
+    inventory_item.archived_at = __import__("datetime").datetime.now(__import__("datetime").UTC)
     db_session.flush()
 
     response = confirm(client, user, plan, [item_payload(ingredients[0], "1.000")])
@@ -815,9 +796,7 @@ def test_archived_inventory_rejected(db_session: Session, client: TestClient) ->
     assert response.json()["code"] == "STATE_CONFLICT"
 
 
-def test_cross_user_plan_ingredient_rejected(
-    db_session: Session, client: TestClient
-) -> None:
+def test_cross_user_plan_ingredient_rejected(db_session: Session, client: TestClient) -> None:
     user = make_user(db_session)
     foreign = make_user(db_session)
     inventory_item = make_inventory(db_session, user, "10.000")
@@ -832,9 +811,7 @@ def test_cross_user_plan_ingredient_rejected(
     assert UUID(str(foreign_plan.id)) == foreign_plan.id
 
 
-def test_ingredient_inventory_mismatch_rejected(
-    db_session: Session, client: TestClient
-) -> None:
+def test_ingredient_inventory_mismatch_rejected(db_session: Session, client: TestClient) -> None:
     user = make_user(db_session)
     first = make_inventory(db_session, user, "10.000", "g", "Tomato")
     second = make_inventory(db_session, user, "10.000", "g", "Basil")
@@ -866,9 +843,7 @@ def test_service_direct_call_returns_snapshot(db_session: Session) -> None:
             )
         ]
     )
-    snapshot = MealPlanService().confirm(
-        db_session, user.id, plan.id, str(uuid4()), payload
-    )
+    snapshot = MealPlanService().confirm(db_session, user.id, plan.id, str(uuid4()), payload)
 
     assert snapshot.status == "confirmed"
     assert snapshot.deducted[0].delta_quantity == Decimal("-1.000")
@@ -879,9 +854,7 @@ def test_get_meal_plan_detail_returns_dishes_and_ingredients(
 ) -> None:
     user = make_user(db_session)
     inventory_item = make_inventory(db_session, user, "10.000", "g", "Tomato")
-    plan, ingredients = make_plan(
-        db_session, user, [(inventory_item, "Tomato", "2.000", "g")]
-    )
+    plan, ingredients = make_plan(db_session, user, [(inventory_item, "Tomato", "2.000", "g")])
 
     confirmed = confirm(client, user, plan, [item_payload(ingredients[0], "2.000")])
     assert confirmed.status_code == 200
@@ -926,17 +899,13 @@ def test_get_meal_plan_detail_exposes_public_recipe_but_not_foreign_private_reci
     foreign = make_user(db_session)
     inventory_item = make_inventory(db_session, owner)
     plan, _ = make_plan(db_session, owner, [(inventory_item, "Tomato", "1.000", "g")])
-    plan_item = db_session.scalar(
-        select(MealPlanItem).where(MealPlanItem.meal_plan_id == plan.id)
-    )
+    plan_item = db_session.scalar(select(MealPlanItem).where(MealPlanItem.meal_plan_id == plan.id))
     assert plan_item is not None
 
     public_recipe = db_session.get(Recipe, plan_item.recipe_id)
     assert public_recipe is not None
     public_recipe.user_id = None
-    public_response = client.get(
-        f"/api/v1/meal-plans/{plan.id}", headers=auth_headers(owner)
-    )
+    public_response = client.get(f"/api/v1/meal-plans/{plan.id}", headers=auth_headers(owner))
     assert public_response.status_code == 200
     assert public_response.json()["items"][0]["recipe"]["user_id"] is None
 
@@ -954,8 +923,6 @@ def test_get_meal_plan_detail_exposes_public_recipe_but_not_foreign_private_reci
     plan_item.recipe_id = foreign_recipe.id
     db_session.flush()
 
-    private_response = client.get(
-        f"/api/v1/meal-plans/{plan.id}", headers=auth_headers(owner)
-    )
+    private_response = client.get(f"/api/v1/meal-plans/{plan.id}", headers=auth_headers(owner))
     assert private_response.status_code == 200
     assert private_response.json()["items"][0]["recipe"] is None

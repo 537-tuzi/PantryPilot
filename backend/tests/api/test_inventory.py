@@ -79,9 +79,7 @@ def create_item(
     return response.json()
 
 
-def patch_item(
-    client: TestClient, token: str, item_id: str, body: dict[str, object]
-):
+def patch_item(client: TestClient, token: str, item_id: str, body: dict[str, object]):
     return client.patch(f"{INVENTORY_URL}/{item_id}", headers=auth_headers(token), json=body)
 
 
@@ -156,9 +154,7 @@ def test_create_rejects_unknown_ingredient(client: TestClient) -> None:
     assert response.json()["code"] == "RESOURCE_NOT_FOUND"
 
 
-def test_list_pagination_and_filters(
-    client: TestClient, ingredient: IngredientCatalog
-) -> None:
+def test_list_pagination_and_filters(client: TestClient, ingredient: IngredientCatalog) -> None:
     token = register(client)
     today = current_date()
     create_item(
@@ -175,9 +171,7 @@ def test_list_pagination_and_filters(
     expired = client.get(f"{INVENTORY_URL}?status=expired", headers=auth_headers(token))
     normal = client.get(f"{INVENTORY_URL}?status=normal", headers=auth_headers(token))
     by_name = client.get(f"{INVENTORY_URL}?name=Taro", headers=auth_headers(token))
-    by_category = client.get(
-        f"{INVENTORY_URL}?category=vegetable", headers=auth_headers(token)
-    )
+    by_category = client.get(f"{INVENTORY_URL}?category=vegetable", headers=auth_headers(token))
     paged = client.get(f"{INVENTORY_URL}?page=1&page_size=2", headers=auth_headers(token))
 
     assert [item["display_name"] for item in expiring.json()["items"]] == ["Tomato"]
@@ -489,18 +483,14 @@ def test_service_rejects_second_update_with_consumed_version(db_session: Session
         db_session,
         user.id,
         created.id,
-        InventoryUpdatePayload(
-            expected_version=1, quantity=Decimal("1.000"), reason="consume"
-        ),
+        InventoryUpdatePayload(expected_version=1, quantity=Decimal("1.000"), reason="consume"),
     )
     with pytest.raises(Exception) as conflict:
         service.update(
             db_session,
             user.id,
             created.id,
-            InventoryUpdatePayload(
-                expected_version=1, quantity=Decimal("0.500"), reason="consume"
-            ),
+            InventoryUpdatePayload(expected_version=1, quantity=Decimal("0.500"), reason="consume"),
         )
     assert getattr(conflict.value, "code", None) == "STATE_CONFLICT"
 

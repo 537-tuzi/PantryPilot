@@ -127,9 +127,7 @@ async def request_validation_error_handler(
     return await app_error_handler(request, ValidationError("Request validation failed"))
 
 
-async def http_exception_handler(
-    request: Request, exc: StarletteHTTPException
-) -> JSONResponse:
+async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     error_by_status = {
         401: UnauthenticatedError,
         403: ForbiddenError,
@@ -138,9 +136,7 @@ async def http_exception_handler(
     }
     error_type = error_by_status.get(exc.status_code)
     if error_type is not None:
-        return await app_error_handler(
-            request, error_type(str(exc.detail)), headers=exc.headers
-        )
+        return await app_error_handler(request, error_type(str(exc.detail)), headers=exc.headers)
     return await app_error_handler(request, AppError(str(exc.detail)), headers=exc.headers)
 
 

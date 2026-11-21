@@ -306,9 +306,7 @@ class MealPlanService:
         return missing
 
     @staticmethod
-    def _replay(
-        existing: MealPlanConfirmation, request_hash: str
-    ) -> MealPlanConfirmResponse:
+    def _replay(existing: MealPlanConfirmation, request_hash: str) -> MealPlanConfirmResponse:
         if existing.request_hash != request_hash:
             raise StateConflictError("Idempotency key was reused with different content")
         return MealPlanConfirmResponse.model_validate(existing.result_snapshot)

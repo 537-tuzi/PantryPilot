@@ -23,9 +23,7 @@ class MealPlanRepository:
         )
         return db.scalar(statement)
 
-    def get_for_shopping_import(
-        self, db: Session, user_id: UUID, plan_id: UUID
-    ) -> MealPlan | None:
+    def get_for_shopping_import(self, db: Session, user_id: UUID, plan_id: UUID) -> MealPlan | None:
         """Lock one owned plan and load the persisted ingredient lines for an import."""
         statement = (
             select(MealPlan)
