@@ -58,25 +58,36 @@ dev/{其他四人}   B 组（后端/数据）2 人、C 组（AI/质量工程）2
 
 ## 快速开始
 
-```bash
-# 后端
-cd backend
-python3 -m venv .venv && source .venv/bin/activate   # 若报 ensurepip 缺失：sudo apt install python3-venv
-pip install -r requirements.txt -r requirements-dev.txt
-uvicorn app.main:app --reload --port 8000
+**统一原则：后端在容器里跑。** 后端基线是 Python 3.11+，而 Ubuntu 22.04 自带 3.10，
+所以 Docker 是唯一受支持的后端运行环境，宿主机 Python 版本不影响开发。
 
-# 前端
-cd frontend
-npm install
-npm run dev
+```bash
+# 一次性安装 Docker
+sudo bash scripts/install_docker.sh && newgrp docker
+
+# 一键初始化（写 .env、构建镜像、启动服务、迁移开发库与测试库）
+bash scripts/bootstrap.sh
+bash scripts/check_env.sh        # 自检，期望 FAIL 0
 ```
 
-环境变量放在**仓库根目录**的 `.env`（后端从根目录读取）：`cp .env.example .env`
+统一入口（所有后端操作）：
 
-> **环境要求**：后端 **Python 3.11+**（代码使用 `datetime.UTC`）、前端 **Node 20+**、PostgreSQL 16（推荐用 Docker Compose 起）。
-> 本机 Python 低于 3.11 时，直接用容器跑后端：`docker compose -f deploy/docker-compose.yml up -d backend`。
+```bash
+bash scripts/dev.sh up        # 构建并启动 db/backend/frontend
+bash scripts/dev.sh test      # 准备测试库并在容器内跑 pytest
+bash scripts/dev.sh migrate   # 开发库迁移
+bash scripts/dev.sh seed      # 演示数据
+bash scripts/dev.sh logs      # 日志
+bash scripts/dev.sh backup    # 备份
+```
 
-一键启动（含 PostgreSQL）：
+前端热更新（可选，需 Node 20+）：
+
+```bash
+cd frontend && npm install && npm run dev    # http://localhost:5200，/api 自动代理
+```
+
+底层等价命令（了解细节时用）：
 
 ```bash
 cp .env.example .env
@@ -85,12 +96,7 @@ docker compose -f deploy/docker-compose.yml exec backend alembic upgrade head
 curl http://localhost/health
 ```
 
-环境自检：
-
-```bash
-bash scripts/check_env.sh    # 工具链 / Git / .env / 端口 / 后端 / 前端 逐项检查
-bash scripts/bootstrap.sh   # 一键初始化（venv、依赖、.env、数据库、迁移）
-```
+环境变量放在**仓库根目录**的 `.env`（后端从根目录读取）：`SECRET_KEY` 保留占位符会导致服务拒绝启动。
 
 ## 文档索引
 

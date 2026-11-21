@@ -11,6 +11,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-pantrypilot}
     volumes:
       - pgdata:/var/lib/postgresql/data
+      # 只读挂载脚本，便于在库容器内执行维护账号授权脚本
+      - ../scripts:/scripts:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pantry} -d ${POSTGRES_DB:-pantrypilot}"]
       interval: 10s
@@ -48,6 +50,30 @@ services:
       - backend
     ports:
       - "${FRONTEND_PORT:-80}:80"
+
+  # 测试服务：带开发依赖的后端镜像 + 源码挂载，用于在容器内跑 pytest。
+  # 用法：bash scripts/dev.sh test
+  backend-test:
+    profiles: ["test"]
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      args:
+        INSTALL_DEV: "true"
+    container_name: pantrypilot-backend-test
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-pantry}:${POSTGRES_PASSWORD:-pantry}@db:5432/${POSTGRES_TEST_DB:-pantrypilot_test}
+      TEST_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-pantry}:${POSTGRES_PASSWORD:-pantry}@db:5432/${POSTGRES_TEST_DB:-pantrypilot_test}
+    volumes:
+      # 源码挂载，改代码后无需重建镜像即可跑测试
+      - ../backend:/app
+      - ../scripts:/app/scripts:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["python", "-m", "pytest", "-o", "addopts="]
 
 volumes:
   pgdata:

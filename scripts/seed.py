@@ -16,6 +16,7 @@ from __future__ import annotations
 import sys
 from datetime import date, timedelta
 from pathlib import Path
+from uuid import uuid4
 
 
 def _bootstrap_import_path() -> None:
@@ -80,8 +81,8 @@ def seed() -> None:
             conn.execute(
                 text(
                     """
-                    INSERT INTO users (username, email, password_hash, is_active, created_at, updated_at)
-                    VALUES (:username, :email, :password_hash, true, now(), now())
+                    INSERT INTO users (id, username, email, password_hash, is_active, created_at, updated_at)
+                    VALUES (:id, :username, :email, :password_hash, true, now(), now())
                     ON CONFLICT (username) DO UPDATE
                     SET email = EXCLUDED.email,
                         password_hash = EXCLUDED.password_hash,
@@ -90,6 +91,9 @@ def seed() -> None:
                     """
                 ),
                 {
+                    # 主键由 Python 侧生成（模型用 default=uuid4，数据库没有默认值），
+                    # 裸 SQL 插入必须自己提供 id
+                    "id": uuid4(),
                     "username": DEMO_USERNAME,
                     "email": DEMO_EMAIL,
                     # 使用与应用登录一致的 Argon2id 哈希，不写入明文密码。
@@ -103,12 +107,12 @@ def seed() -> None:
                 conn.execute(
                     text(
                         """
-                        INSERT INTO ingredient_catalog (canonical_name, category, default_unit)
-                        VALUES (:name, :category, :unit)
+                        INSERT INTO ingredient_catalog (id, canonical_name, category, default_unit)
+                        VALUES (:id, :name, :category, :unit)
                         ON CONFLICT DO NOTHING
                         """
                     ),
-                    {"name": name, "category": category, "unit": unit},
+                    {"id": uuid4(), "name": name, "category": category, "unit": unit},
                 )
             print("已写入食材目录")
 
@@ -125,14 +129,15 @@ def seed() -> None:
                     text(
                         """
                         INSERT INTO inventory_items
-                            (user_id, display_name, quantity, unit, purchase_date, expiry_date,
+                            (id, user_id, display_name, quantity, unit, purchase_date, expiry_date,
                              storage_location, version, created_at, updated_at)
                         VALUES
-                            (:user_id, :name, :qty, :unit, :purchase_date, :expiry_date,
+                            (:id, :user_id, :name, :qty, :unit, :purchase_date, :expiry_date,
                              :location, 1, now(), now())
                         """
                     ),
                     {
+                        "id": uuid4(),
                         "user_id": user_id,
                         "name": name,
                         "qty": qty,

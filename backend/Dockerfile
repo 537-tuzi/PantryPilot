@@ -11,7 +11,10 @@ RUN apt-get update \
 
 COPY requirements.txt ./
 COPY requirements-dev.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# INSTALL_DEV=true 时一并装开发依赖（pytest/ruff/mypy），用于容器内跑测试与静态检查
+ARG INSTALL_DEV=false
+RUN pip install --no-cache-dir -r requirements.txt \
+    && if [ "$INSTALL_DEV" = "true" ]; then pip install --no-cache-dir -r requirements-dev.txt; fi
 
 COPY alembic.ini ./
 COPY alembic ./alembic
