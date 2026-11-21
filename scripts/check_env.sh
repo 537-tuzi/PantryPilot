@@ -1,11 +1,24 @@
 #!/usr/bin/env bash
 # 环境自检：逐项检查本地配置是否正确可用。
-# 用法：bash scripts/check_env.sh
+# 用法：bash scripts/check_env.sh [--fast]
+#   --fast 跳过前端 lint/类型检查/测试（约 15 秒），适合日常快速确认
 # 退出码：0 = 全部通过；1 = 存在 FAIL 项
 set -uo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
+
+FAST=0
+for arg in "$@"; do
+  case "$arg" in
+    --fast) FAST=1 ;;
+    -h|--help)
+      echo "用法：bash scripts/check_env.sh [--fast]"
+      echo "  --fast   跳过前端 lint/类型检查/测试"
+      exit 0 ;;
+    *) echo "未知参数：$arg（用 --help 查看用法）" >&2; exit 2 ;;
+  esac
+done
 
 PASS=0; WARN=0; FAIL=0
 ok()   { printf '  \033[0;32m[OK]\033[0m   %s\n' "$1"; PASS=$((PASS+1)); }
@@ -89,14 +102,19 @@ else
 fi
 
 head "6. 前端"
-if [ -d frontend/node_modules ]; then ok "node_modules 已安装"
-else warn "依赖未安装，执行：cd frontend && npm install"; fi
-if (cd frontend && npm run lint --silent >/dev/null 2>&1); then ok "ESLint 通过"
-else warn "ESLint 未通过，执行：cd frontend && npm run lint"; fi
-if (cd frontend && npm run typecheck --silent >/dev/null 2>&1); then ok "类型检查通过"
-else warn "类型检查未通过，执行：cd frontend && npm run typecheck"; fi
-if (cd frontend && npm run test --silent >/dev/null 2>&1); then ok "前端测试通过"
-else warn "前端测试未通过，执行：cd frontend && npm run test"; fi
+if [ "$FAST" -eq 1 ]; then
+  echo "  （--fast 模式，跳过前端 lint / 类型检查 / 测试）"
+  [ -d frontend/node_modules ] && ok "node_modules 已安装" || warn "依赖未安装，执行：cd frontend && npm install"
+else
+  if [ -d frontend/node_modules ]; then ok "node_modules 已安装"
+  else warn "依赖未安装，执行：cd frontend && npm install"; fi
+  if (cd frontend && npm run lint --silent >/dev/null 2>&1); then ok "ESLint 通过"
+  else warn "ESLint 未通过，执行：cd frontend && npm run lint"; fi
+  if (cd frontend && npm run typecheck --silent >/dev/null 2>&1); then ok "类型检查通过"
+  else warn "类型检查未通过，执行：cd frontend && npm run typecheck"; fi
+  if (cd frontend && npm run test --silent >/dev/null 2>&1); then ok "前端测试通过"
+  else warn "前端测试未通过，执行：cd frontend && npm run test"; fi
+fi
 
 head "7. 容器"
 if command -v docker >/dev/null 2>&1; then

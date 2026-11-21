@@ -6,10 +6,18 @@
 
 from datetime import date
 from decimal import Decimal
+from enum import Enum
 
 from pydantic import BaseModel, Field
 
-StorageLocation = str  # 冷藏 / 冷冻 / 常温 / 自定义
+
+class StorageLocation(str, Enum):
+    """存储位置。取值与 文档/03 §5 字段校验一致。"""
+
+    COLD = "冷藏"
+    FROZEN = "冷冻"
+    AMBIENT = "常温"
+    CUSTOM = "自定义"
 
 
 class IngredientDraft(BaseModel):
