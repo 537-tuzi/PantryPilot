@@ -62,7 +62,7 @@ dev/{其他四人}   B 组（后端/数据）2 人、C 组（AI/质量工程）2
 # 后端
 cd backend
 python3 -m venv .venv && source .venv/bin/activate   # 若报 ensurepip 缺失：sudo apt install python3-venv
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-dev.txt
 uvicorn app.main:app --reload --port 8000
 
 # 前端
@@ -72,6 +72,9 @@ npm run dev
 ```
 
 环境变量放在**仓库根目录**的 `.env`（后端从根目录读取）：`cp .env.example .env`
+
+> **环境要求**：后端 **Python 3.11+**（代码使用 `datetime.UTC`）、前端 **Node 20+**、PostgreSQL 16（推荐用 Docker Compose 起）。
+> 本机 Python 低于 3.11 时，直接用容器跑后端：`docker compose -f deploy/docker-compose.yml up -d backend`。
 
 一键启动（含 PostgreSQL）：
 

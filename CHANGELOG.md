@@ -2,6 +2,20 @@
 
 本文件记录 PantryPilot 各版本的变更。格式参考 Keep a Changelog。
 
+## [1.1.2] - 2026-11-21
+
+### 修复
+- **合并团队 main 后实测发现并修复**：前端 `stores/auth.ts` 登录提交 `username`，而后端 `LoginRequest` 要求 `email`，登录与注册必然失败。已改为登录传 `email`、注册传 `username + email + password`，并与 `文档/05` §10 契约同步（实测：注册返回 token、错误凭据 401、无 token 401、携带 token 可访问受保护接口）。
+- `文档/05` §10 认证契约按**已实现代码**重新校准：登录改用 email、有效期改为 `JWT_ACCESS_TOKEN_EXPIRE_MINUTES`（默认 60 分钟）、密码 Argon2id、令牌载荷 `{sub, exp}`。
+- 新增 `backend/requirements-dev.txt`（pytest/pytest-cov/ruff/mypy）：此前文档只让成员装 `requirements.txt`，导致新克隆环境里 `pytest` 缺失、自检脚本与测试无法运行；bootstrap、CI、三份说明文档已统一改为同时安装。
+- `backend/Dockerfile` 复制 `requirements-dev.txt`，使容器内可临时执行测试（此前镜像内无该文件）。
+- `scripts/bootstrap.sh` 补 `ok()` 函数定义（此前报 `ok: 未找到命令`），并在无 docker 组权限时给出可读提示而非直接中断。
+- `scripts/check_env.sh` 增加 Python 版本门禁（< 3.11 判 FAIL，因后端使用 `datetime.UTC`）、pytest 缺失检测、`--fast` 模式。
+
+### 变更
+- 开发规范 / 团队上手步骤 / README 的 Python 基线由 3.10+ 更正为 **3.11+**，与 `pyproject.toml`、Dockerfile、CI 实际版本一致。
+- `.env.example` 合并双方内容：保留团队的 `APP_TIMEZONE`、`JWT_*`、`TEST_*` 配置，并把 `DATABASE_URL` 改为 `localhost`（compose 容器内仍覆盖为 `db:5432`），使宿主机直跑与容器两种方式都可用。
+
 ## [1.1.1] - 2026-11-21
 
 ### 修复

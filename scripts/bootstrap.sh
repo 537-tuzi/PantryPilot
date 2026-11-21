@@ -36,8 +36,8 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip >/dev/null
 pip install -r requirements.txt
-# 开发工具直接安装，避免可编辑安装在不同 setuptools 版本下解析元数据失败
-pip install "pytest>=8.0" "pytest-cov>=5.0" "ruff>=0.5" "mypy>=1.10"
+# 开发工具单独安装，避免可编辑安装在不同 setuptools 版本下解析元数据失败
+pip install -r requirements-dev.txt
 
 info "初始化前端依赖"
 cd "$ROOT_DIR/frontend"

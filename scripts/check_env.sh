@@ -28,6 +28,13 @@ head() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 
 head "1. 工具链"
 command -v python3 >/dev/null && ok "python3 $(python3 -V 2>&1 | cut -d' ' -f2)" || bad "未安装 python3"
+PYVER=$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/null || echo 0.0)
+if python3 -c 'import sys; raise SystemExit(0 if sys.version_info[:2] >= (3, 11) else 1)' 2>/dev/null; then
+  ok "Python 版本满足要求（>= 3.11）"
+else
+  bad "Python $PYVER 低于项目基线 3.11（backend 使用 datetime.UTC，3.11+ 才有）。"
+  bad "解决：Docker 内运行（compose 已用 python:3.11-slim），或自行安装 Python 3.11+ 并重建 venv"
+fi
 command -v node >/dev/null && ok "node $(node -v)" || bad "未安装 node（需要 20+）"
 command -v npm >/dev/null && ok "npm $(npm -v)" || bad "未安装 npm"
 command -v docker >/dev/null && ok "docker $(docker -v 2>/dev/null | cut -d' ' -f3 | tr -d ',')" \
@@ -88,7 +95,12 @@ head "5. 后端"
 if python3 -c 'import fastapi, sqlalchemy, alembic' >/dev/null 2>&1; then
   ok "依赖已安装（fastapi / sqlalchemy / alembic）"
 else
-  warn "依赖未安装，执行：cd backend && pip install -r requirements.txt"
+  warn "依赖未安装，执行：cd backend && pip install -r requirements.txt -r requirements-dev.txt"
+fi
+if python3 -c 'import pytest' >/dev/null 2>&1; then
+  ok "开发依赖已安装（pytest / ruff）"
+else
+  warn "开发依赖未安装，执行：cd backend && pip install -r requirements-dev.txt（否则无法跑测试）"
 fi
 if (cd backend && python3 -c 'from app.main import app' >/dev/null 2>&1); then
   ok "应用可正常导入（app.main）"

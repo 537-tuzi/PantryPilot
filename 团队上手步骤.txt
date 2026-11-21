@@ -31,8 +31,12 @@ PantryPilot（食刻管家）· 团队上手：五个 Git 步骤
   后端：
     cd backend
     python3 -m venv .venv && source .venv/bin/activate   # 若报 ensurepip 缺失：sudo apt install python3-venv
-    pip install -r requirements.txt
+    pip install -r requirements.txt -r requirements-dev.txt   # dev 版含 pytest/ruff/mypy
     uvicorn app.main:app --reload --port 8000      # 健康检查 http://localhost:8000/health
+
+  注意：后端要求 Python 3.11+（代码用到 datetime.UTC）。本机 python3 低于 3.11 时，
+        不要在宿主机跑后端，直接用容器：
+          docker compose -f deploy/docker-compose.yml up -d backend
 
   前端：
     cd frontend && npm install && npm run dev       # http://localhost:5200
