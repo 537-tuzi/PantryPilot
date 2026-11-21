@@ -32,8 +32,8 @@ PYVER=$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/nu
 if python3 -c 'import sys; raise SystemExit(0 if sys.version_info[:2] >= (3, 11) else 1)' 2>/dev/null; then
   ok "Python 版本满足要求（>= 3.11）"
 else
-  bad "Python $PYVER 低于项目基线 3.11（backend 使用 datetime.UTC，3.11+ 才有）。"
-  bad "解决：Docker 内运行（compose 已用 python:3.11-slim），或自行安装 Python 3.11+ 并重建 venv"
+  bad "Python $PYVER 低于项目基线 3.11（backend 使用 datetime.UTC，3.11+ 才有）"
+  echo "         → 解决：Docker 内运行（compose 已用 python:3.11-slim），或自行安装 Python 3.11+ 并重建 venv"
 fi
 command -v node >/dev/null && ok "node $(node -v)" || bad "未安装 node（需要 20+）"
 command -v npm >/dev/null && ok "npm $(npm -v)" || bad "未安装 npm"
@@ -107,11 +107,17 @@ if (cd backend && python3 -c 'from app.main import app' >/dev/null 2>&1); then
 else
   bad "应用导入失败，执行：cd backend && python3 -c 'from app.main import app' 查看报错"
 fi
-if (cd backend && python3 -m pytest -q >/dev/null 2>&1); then
+PYTEST_OUT="$(mktemp)"
+if (cd backend && python3 -m pytest -o addopts= -q >"$PYTEST_OUT" 2>&1); then
   ok "后端测试通过"
+elif grep -q "No module named pytest" "$PYTEST_OUT"; then
+  warn "后端测试未运行：缺少 pytest，执行 cd backend && pip install -r requirements-dev.txt"
+elif grep -q "cannot import name 'UTC'" "$PYTEST_OUT"; then
+  bad "后端测试无法运行：当前 Python 低于 3.11（datetime.UTC 需 3.11+），改用容器执行"
 else
-  warn "后端测试未通过，执行：cd backend && python3 -m pytest -q"
+  bad "后端测试未通过，执行 cd backend && python3 -m pytest 查看详情"
 fi
+rm -f "$PYTEST_OUT"
 
 head "6. 前端"
 if [ "$FAST" -eq 1 ]; then
