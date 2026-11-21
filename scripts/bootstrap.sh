@@ -7,6 +7,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 info() { printf '\033[0;36m==>\033[0m %s\n' "$1"; }
+ok()   { printf '\033[0;32m[OK]\033[0m %s\n' "$1"; }
 warn() { printf '\033[0;33m[!]\033[0m %s\n' "$1"; }
 die()  { printf '\033[0;31m[x]\033[0m %s\n' "$1" >&2; exit 1; }
 
@@ -44,12 +45,18 @@ npm install --no-audit --no-fund
 
 info "启动数据库并执行迁移"
 cd "$ROOT_DIR"
-if command -v docker >/dev/null 2>&1; then
+if ! command -v docker >/dev/null 2>&1; then
+  warn "未检测到 docker，跳过数据库启动"
+  warn "安装方式：sudo bash scripts/install_docker.sh"
+  warn "本机可自行准备 PostgreSQL 后执行：cd backend && source .venv/bin/activate && alembic upgrade head"
+elif ! docker info >/dev/null 2>&1; then
+  warn "无权访问 docker daemon（用户刚被加入 docker 组但当前会话未生效）"
+  warn "请执行 newgrp docker 或注销后重新登录，再重新运行本脚本"
+  warn "跳过数据库启动；其余依赖已安装完成，可继续开发"
+else
   docker compose -f deploy/docker-compose.yml up -d db
   docker compose -f deploy/docker-compose.yml run --rm backend alembic upgrade head
-else
-  warn "未检测到 docker，跳过数据库启动"
-  warn "本机可自行准备 PostgreSQL 后执行：cd backend && alembic upgrade head"
+  ok "数据库已启动，迁移已执行"
 fi
 
 info "环境自检"
