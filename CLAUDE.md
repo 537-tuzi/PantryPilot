@@ -42,8 +42,11 @@
 - 项目末端门禁：Must 完成率 100%、P0 用例 100%、S1/S2 清零、核心闭环端到端、干净环境部署+持久化。**操作视频由 A 组负责**。
 
 ## 6. 当前真实进度（2026-11-24）
-后端 Sprint 1 已实现并合入 main（20 个 API、12 表、2 迁移、93 test 函数）；**前端 10 视图全占位**（AppLayout 孤儿、无守卫、无 401、auth store 仅 token、types 漂移）；AI（Sprint 2）完全未实现（无 /ai/* 端点、seed 不创建 meal_plans/recipes）。
-前端全程路线图与 Sprint 1 详设见 `docs/specs/2026-11-24-frontend-development-design.md`。
+- 后端：Sprint 1 已实现并合入 main（20 个 API + `GET /inventory/categories`、12 表、2 迁移、99 test 函数过 2 跳过）。
+- 前端：**Sprint 1 五页（认证/首页/库存/表单/临期）已实现并经对抗性审查，PR 已合入 main**；**Sprint 2 前端（UI-10 偏好、UI-09 采购）已实现真实接通**（109 测试绿）；分类筛选接真实 `GET /inventory/categories`（seed 关联 ingredient_id，无硬编码）。
+- AI（Sprint 2 后端）完全未实现（无 /ai/* 端点、seed 不创建 meal_plans/recipes）→ UI-05/07/08 保持诚实"Sprint 2 未开放"桩；UI-08 确认扣减（Sprint 3）契约已冻结。
+- 已知坑（必须遵守）：**el-form 组件的 @submit 修饰符 .prevent 在 fallthrough 时丢失且浏览器原生校验会静默阻止提交** → 所有表单加 `novalidate` + 处理器显式 `event?.preventDefault()`；el-input-number 的 `:step` 会进入原生 step 校验（step 必须与 min 对齐或 0.01/1，否则提交被静默拦截）。jsdom 下 el-form 字段不注册（validate 恒 true）→ 提交门禁用确定性手动守卫。
+- 路线图与 Sprint 1 详设见 `docs/specs/2026-11-24-frontend-development-design.md`。
 
 ## 7. 沟通
 始终用中文回复（技术标识符保持原文）。
