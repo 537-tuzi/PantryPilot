@@ -39,6 +39,16 @@ class InventoryRepository:
             is not None
         )
 
+    def list_categories(self, db: Session) -> list[str]:
+        """Distinct catalog categories for the filter dropdown (catalog is shared)."""
+        statement = (
+            select(IngredientCatalog.category)
+            .where(IngredientCatalog.category.is_not(None))
+            .distinct()
+            .order_by(IngredientCatalog.category)
+        )
+        return list(db.scalars(statement))
+
     def list_items(
         self,
         db: Session,

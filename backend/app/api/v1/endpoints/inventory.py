@@ -61,6 +61,14 @@ def list_expiring_inventory(
     return InventoryService().list_expiring(db, current_user.id)
 
 
+@router.get("/categories", response_model=list[str])
+def list_inventory_categories(
+    current_user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+) -> list[str]:
+    return InventoryService().list_categories(db)
+
+
 @router.get("/{item_id}", response_model=InventoryResponse)
 def get_inventory_item(
     item_id: UUID,
