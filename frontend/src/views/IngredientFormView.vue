@@ -100,7 +100,8 @@ function buildDiff(): InventoryUpdateRequest {
   return body
 }
 
-async function onSubmit(): Promise<void> {
+async function onSubmit(event?: Event): Promise<void> {
+  event?.preventDefault()
   if (submitting.value) {
     return
   }
@@ -190,7 +191,7 @@ defineExpose({ form, onSubmit, dirty, validationError, loadItem })
   <div>
     <PageHeader :title="isEdit ? '编辑食材' : '新增食材'" page-id="UI-04" />
     <FourState :loading="loading" :error="loadError" @retry="loadItem">
-      <el-form label-position="top" class="ingredient-form" @submit.prevent="onSubmit">
+      <el-form label-position="top" novalidate class="ingredient-form" @submit.prevent="onSubmit">
         <el-form-item label="名称" required>
           <el-input v-model="form.display_name" :maxlength="isEdit ? 200 : 80" show-word-limit />
         </el-form-item>

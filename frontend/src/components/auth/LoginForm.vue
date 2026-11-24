@@ -23,7 +23,8 @@ const rules: FormRules = {
   ],
 }
 
-async function onSubmit(): Promise<void> {
+async function onSubmit(event?: Event): Promise<void> {
+  event?.preventDefault()
   if (submitting.value) {
     return
   }
@@ -46,7 +47,7 @@ async function onSubmit(): Promise<void> {
 </script>
 
 <template>
-  <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @submit.prevent="onSubmit">
+  <el-form ref="formRef" :model="form" :rules="rules" label-position="top" novalidate @submit.prevent="onSubmit">
     <el-form-item label="邮箱" prop="email">
       <el-input v-model="form.email" autocomplete="username" placeholder="you@example.com" />
     </el-form-item>
