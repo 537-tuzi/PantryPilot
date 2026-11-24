@@ -35,7 +35,8 @@ const rules: FormRules = {
   confirmPassword: [{ required: true, message: '请确认密码', trigger: 'blur' }],
 }
 
-async function onSubmit(): Promise<void> {
+async function onSubmit(event?: Event): Promise<void> {
+  event?.preventDefault()
   if (submitting.value) {
     return
   }
@@ -73,7 +74,7 @@ defineExpose({ form, onSubmit, validationError })
 </script>
 
 <template>
-  <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @submit.prevent="onSubmit">
+  <el-form ref="formRef" :model="form" :rules="rules" label-position="top" novalidate @submit.prevent="onSubmit">
     <el-form-item label="用户名" prop="username">
       <el-input v-model="form.username" maxlength="100" autocomplete="nickname" />
     </el-form-item>
