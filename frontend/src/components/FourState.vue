@@ -20,7 +20,9 @@ defineEmits<{ retry: [] }>()
   <el-skeleton v-if="loading" :rows="loadingRows" animated />
   <div v-else-if="error" class="pp-four-state-error">
     <el-alert type="error" :title="error.message" :closable="false" />
-    <el-button type="primary" @click="$emit('retry')">重试</el-button>
+    <el-button type="primary" @click="$emit('retry')">
+      重试
+    </el-button>
     <span class="muted">request_id: {{ error.requestId }}</span>
   </div>
   <el-empty v-else-if="empty" :description="emptyText" />

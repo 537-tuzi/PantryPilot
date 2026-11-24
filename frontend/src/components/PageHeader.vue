@@ -5,10 +5,16 @@ defineProps<{ title: string; description?: string; pageId?: string }>()
 <template>
   <div class="pp-page-header">
     <div>
-      <h1 class="pp-page-title">{{ title }}</h1>
-      <p v-if="description" class="pp-page-desc">{{ description }}</p>
+      <h1 class="pp-page-title">
+        {{ title }}
+      </h1>
+      <p v-if="description" class="pp-page-desc">
+        {{ description }}
+      </p>
     </div>
-    <div class="pp-page-actions"><slot name="actions" /></div>
+    <div class="pp-page-actions">
+      <slot name="actions" />
+    </div>
   </div>
 </template>
 

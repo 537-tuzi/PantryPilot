@@ -54,8 +54,12 @@ function onArchived(value: boolean): void {
       <el-option label="临期" value="expiring" />
       <el-option label="过期" value="expired" />
     </el-select>
-    <el-checkbox :model-value="local.include_archived" @change="onArchived">显示已归档</el-checkbox>
-    <el-button type="primary" @click="emit('create')">新增</el-button>
+    <el-checkbox :model-value="local.include_archived" @change="onArchived">
+      显示已归档
+    </el-checkbox>
+    <el-button type="primary" @click="emit('create')">
+      新增
+    </el-button>
   </div>
 </template>
 

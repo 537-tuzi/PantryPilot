@@ -67,10 +67,18 @@ async function onSubmit(): Promise<void> {
       <el-input v-model="form.password" type="password" show-password autocomplete="new-password" />
     </el-form-item>
     <ul class="pwd-checklist">
-      <li :class="{ ok: lengthOk }">8~128 位</li>
-      <li :class="{ ok: hasLower }">含小写字母</li>
-      <li :class="{ ok: hasUpper }">含大写字母</li>
-      <li :class="{ ok: hasDigit }">含数字</li>
+      <li :class="{ ok: lengthOk }">
+        8~128 位
+      </li>
+      <li :class="{ ok: hasLower }">
+        含小写字母
+      </li>
+      <li :class="{ ok: hasUpper }">
+        含大写字母
+      </li>
+      <li :class="{ ok: hasDigit }">
+        含数字
+      </li>
     </ul>
     <el-form-item label="确认密码" prop="confirmPassword">
       <el-input v-model="form.confirmPassword" type="password" show-password autocomplete="new-password" />

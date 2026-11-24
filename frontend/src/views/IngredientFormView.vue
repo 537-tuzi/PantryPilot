@@ -194,8 +194,12 @@ defineExpose({ form, onSubmit })
         </el-form-item>
         <el-alert v-if="conflict" type="warning" :title="conflict" :closable="false" />
         <div class="form-actions">
-          <el-button @click="onCancel">取消</el-button>
-          <el-button type="primary" native-type="submit" :loading="submitting" :disabled="submitting">保存</el-button>
+          <el-button @click="onCancel">
+            取消
+          </el-button>
+          <el-button type="primary" native-type="submit" :loading="submitting" :disabled="submitting">
+            保存
+          </el-button>
         </div>
       </el-form>
     </FourState>

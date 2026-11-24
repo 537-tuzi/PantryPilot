@@ -58,24 +58,38 @@ function daysLabel(item: InventoryItem): string {
         <strong class="stat-value">{{ summary?.expired_count ?? '—' }}</strong>
       </div>
     </div>
-    <p v-if="summary" class="stat-date">统计日期 {{ summary.statistics_date }}</p>
+    <p v-if="summary" class="stat-date">
+      统计日期 {{ summary.statistics_date }}
+    </p>
 
     <div class="quick-actions">
-      <el-button type="primary" @click="router.push({ name: 'ingredient-form' })">新增食材</el-button>
-      <el-button @click="router.push({ name: 'expiry' })">查看临期</el-button>
+      <el-button type="primary" @click="router.push({ name: 'ingredient-form' })">
+        新增食材
+      </el-button>
+      <el-button @click="router.push({ name: 'expiry' })">
+        查看临期
+      </el-button>
       <el-tooltip content="AI 膳食规划将在 Sprint 2 开放" placement="top">
-        <el-button disabled>开始规划</el-button>
+        <el-button disabled>
+          开始规划
+        </el-button>
       </el-tooltip>
     </div>
 
     <section class="expiring-section">
       <h2>待消耗食材</h2>
-      <div v-if="expiringState.loading.value" class="muted">加载中…</div>
+      <div v-if="expiringState.loading.value" class="muted">
+        加载中…
+      </div>
       <div v-else-if="expiringState.error.value" class="muted">
         加载失败
-        <el-button size="small" @click="expiringState.execute()">重试</el-button>
+        <el-button size="small" @click="expiringState.execute()">
+          重试
+        </el-button>
       </div>
-      <div v-else-if="expiringCards.length === 0" class="muted">暂无临期食材</div>
+      <div v-else-if="expiringCards.length === 0" class="muted">
+        暂无临期食材
+      </div>
       <div v-else>
         <div class="expiring-cards">
           <div v-for="item in expiringCards" :key="item.id" class="expiring-card">
@@ -85,7 +99,9 @@ function daysLabel(item: InventoryItem): string {
             <StatusTag :status="item.status" />
           </div>
         </div>
-        <el-button size="small" @click="router.push({ name: 'expiry' })">查看全部</el-button>
+        <el-button size="small" @click="router.push({ name: 'expiry' })">
+          查看全部
+        </el-button>
       </div>
     </section>
   </div>

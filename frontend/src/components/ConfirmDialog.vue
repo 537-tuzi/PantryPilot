@@ -34,8 +34,12 @@ function onConfirm(): void {
   >
     <slot />
     <template #footer>
-      <el-button @click="onCancel">{{ cancelText }}</el-button>
-      <el-button type="primary" :loading="loading" @click="onConfirm">{{ confirmText }}</el-button>
+      <el-button @click="onCancel">
+        {{ cancelText }}
+      </el-button>
+      <el-button type="primary" :loading="loading" @click="onConfirm">
+        {{ confirmText }}
+      </el-button>
     </template>
   </el-dialog>
 </template>

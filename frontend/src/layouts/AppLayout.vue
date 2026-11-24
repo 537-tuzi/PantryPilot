@@ -46,8 +46,12 @@ function onCommand(command: string): void {
         </span>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="preferences">个人偏好</el-dropdown-item>
-            <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+            <el-dropdown-item command="preferences">
+              个人偏好
+            </el-dropdown-item>
+            <el-dropdown-item command="logout">
+              退出登录
+            </el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>

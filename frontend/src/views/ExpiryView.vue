@@ -49,7 +49,9 @@ function goPlanner(): void {
   <div>
     <PageHeader title="临期管理" description="临期/过期列表、到期日、剩余天数。状态由服务端按 3 天阈值计算。" page-id="UI-06">
       <template #actions>
-        <el-button @click="goPlanner">去规划</el-button>
+        <el-button @click="goPlanner">
+          去规划
+        </el-button>
       </template>
     </PageHeader>
     <FourState
@@ -59,7 +61,9 @@ function goPlanner(): void {
       empty-text="暂无临期或过期食材"
       @retry="execute"
     >
-      <div class="expiry-summary">已过期 {{ expiredCount }} 项 · 临期 {{ expiringCount }} 项</div>
+      <div class="expiry-summary">
+        已过期 {{ expiredCount }} 项 · 临期 {{ expiringCount }} 项
+      </div>
       <div class="expiry-list">
         <div v-for="item in items" :key="item.id" class="expiry-row">
           <span class="expiry-name">{{ item.display_name }}</span>
@@ -67,7 +71,9 @@ function goPlanner(): void {
           <span>{{ item.expiry_date }}</span>
           <span>{{ daysLabel(item) }}</span>
           <StatusTag :status="item.status" />
-          <el-button size="small" @click="viewInventory(item)">查看库存</el-button>
+          <el-button size="small" @click="viewInventory(item)">
+            查看库存
+          </el-button>
         </div>
       </div>
     </FourState>

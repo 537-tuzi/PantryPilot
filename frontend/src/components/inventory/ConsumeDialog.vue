@@ -93,18 +93,26 @@ async function onConfirm(): Promise<void> {
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div v-if="currentItem" class="consume-body">
-      <p class="consume-name">{{ currentItem.display_name }}</p>
+      <p class="consume-name">
+        {{ currentItem.display_name }}
+      </p>
       <p>当前数量：<QuantityText :quantity="currentItem.quantity" :unit="currentItem.unit" /></p>
       <p class="consume-target">
         目标数量：
         <DecimalInput v-model="target" />
-        <el-button size="small" @click="deplete">一键耗尽</el-button>
+        <el-button size="small" @click="deplete">
+          一键耗尽
+        </el-button>
       </p>
       <el-alert v-if="conflict" type="warning" :title="conflict" :closable="false" />
     </div>
     <template #footer>
-      <el-button @click="emit('update:modelValue', false)">取消</el-button>
-      <el-button type="primary" :loading="submitting" @click="onConfirm">确认耗尽</el-button>
+      <el-button @click="emit('update:modelValue', false)">
+        取消
+      </el-button>
+      <el-button type="primary" :loading="submitting" @click="onConfirm">
+        确认耗尽
+      </el-button>
     </template>
   </el-dialog>
 </template>

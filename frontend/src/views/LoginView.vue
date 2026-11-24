@@ -48,7 +48,9 @@ function onTabChange(): void {
 <template>
   <div class="auth-page">
     <el-card class="auth-card">
-      <h1 class="auth-title">食刻管家 PantryPilot</h1>
+      <h1 class="auth-title">
+        食刻管家 PantryPilot
+      </h1>
       <el-tabs v-model="mode" @tab-change="onTabChange">
         <el-tab-pane label="登录" name="login" />
         <el-tab-pane label="注册" name="register" />
