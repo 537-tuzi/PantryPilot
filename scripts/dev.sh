@@ -125,7 +125,7 @@ cmd_test() {
   if url="$(maintenance_url_in_container)"; then
     extra_env=(-e "TEST_MAINTENANCE_DATABASE_URL=$url")
   fi
-  dc_test run --rm -T "${extra_env[@]}" backend-test
+  dc_test run --rm -T ${extra_env[@]+"${extra_env[@]}"} backend-test
 }
 
 cmd_seed() {
