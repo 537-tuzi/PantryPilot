@@ -8,6 +8,7 @@ import DecimalInput from '@/components/DecimalInput.vue'
 import QuantityText from '@/components/QuantityText.vue'
 import type { InventoryItem } from '@/types/api'
 import { compareDecimal, isValidDecimal } from '@/utils/decimal'
+import { mapErrorMessage } from '@/utils/errorMap'
 
 const props = defineProps<{ modelValue: boolean; item: InventoryItem | null }>()
 const emit = defineEmits<{
@@ -70,14 +71,24 @@ async function onConfirm(): Promise<void> {
   } catch (e) {
     const err = e as NormalizedError
     if (err.code === 'STATE_CONFLICT') {
-      const fresh = await inventoryApi.get(it.id)
-      currentItem.value = fresh
-      conflict.value = '该食材已被其他操作修改，请核对最新数量后重试'
+      try {
+        const fresh = await inventoryApi.get(it.id)
+        currentItem.value = fresh
+        conflict.value = '该食材已被其他操作修改，请核对最新数量后重试'
+      } catch (e2) {
+        const err2 = e2 as NormalizedError
+        if (err2.code === 'RESOURCE_NOT_FOUND') {
+          emit('removed', it.id)
+          emit('update:modelValue', false)
+        } else {
+          conflict.value = mapErrorMessage(err2)
+        }
+      }
     } else if (err.code === 'RESOURCE_NOT_FOUND') {
       emit('removed', it.id)
       emit('update:modelValue', false)
     } else {
-      conflict.value = err.message
+      conflict.value = mapErrorMessage(err)
     }
   } finally {
     submitting.value = false

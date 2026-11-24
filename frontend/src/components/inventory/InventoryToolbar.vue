@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, watch } from 'vue'
 
 import type { InventoryFilters } from '@/api/inventory'
 import type { InventoryStatus } from '@/types/api'
@@ -8,6 +8,16 @@ const props = defineProps<{ modelValue: InventoryFilters }>()
 const emit = defineEmits<{ change: [filters: InventoryFilters]; create: [] }>()
 
 const local = reactive<InventoryFilters>({ ...props.modelValue })
+
+// 同步父级 filters（深链注入 name/status 时 toolbar 可见）
+watch(
+  () => props.modelValue,
+  (v) => {
+    Object.assign(local, v)
+  },
+  { deep: true },
+)
+
 let timer: ReturnType<typeof setTimeout> | undefined
 
 function emitChange(): void {
@@ -49,6 +59,7 @@ function onArchived(value: boolean): void {
       <el-option label="蛋类" value="蛋类" />
       <el-option label="肉类" value="肉类" />
     </el-select>
+    <span class="category-hint">分类仅匹配已关联食材库的条目</span>
     <el-select :model-value="local.status" placeholder="状态" clearable @change="onStatus">
       <el-option label="正常" value="normal" />
       <el-option label="临期" value="expiring" />

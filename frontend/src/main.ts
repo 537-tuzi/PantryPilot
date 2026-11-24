@@ -8,6 +8,7 @@ import router from './router'
 import { setupGuards } from './router/guards'
 import { setUnauthorizedHandler } from './api/client'
 import { useAuthStore } from './stores/auth'
+import { setAppError } from './utils/appError'
 import './styles/main.css'
 
 const app = createApp(App)
@@ -34,9 +35,11 @@ setUnauthorizedHandler(() => {
 
 app.config.errorHandler = (err) => {
   console.error('[app error]', err)
+  setAppError(err)
 }
 window.addEventListener('unhandledrejection', (event) => {
   console.error('[unhandled rejection]', event.reason)
+  setAppError(event.reason)
 })
 
 app.mount('#app')

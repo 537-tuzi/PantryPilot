@@ -70,9 +70,11 @@ function daysLabel(item: InventoryItem): string {
         查看临期
       </el-button>
       <el-tooltip content="AI 膳食规划将在 Sprint 2 开放" placement="top">
-        <el-button disabled>
-          开始规划
-        </el-button>
+        <span>
+          <el-button disabled>
+            开始规划
+          </el-button>
+        </span>
       </el-tooltip>
     </div>
 

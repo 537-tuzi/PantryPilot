@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /** 四态容器：加载/错误/空/默认。权限失效由全局 401 处理器满足，不在此内联。 */
 import type { NormalizedError } from '@/api/client'
+import { mapErrorMessage } from '@/utils/errorMap'
 
 withDefaults(
   defineProps<{
@@ -19,7 +20,7 @@ defineEmits<{ retry: [] }>()
 <template>
   <el-skeleton v-if="loading" :rows="loadingRows" animated />
   <div v-else-if="error" class="pp-four-state-error">
-    <el-alert type="error" :title="error.message" :closable="false" />
+    <el-alert type="error" :title="mapErrorMessage(error)" :closable="false" />
     <el-button type="primary" @click="$emit('retry')">
       重试
     </el-button>

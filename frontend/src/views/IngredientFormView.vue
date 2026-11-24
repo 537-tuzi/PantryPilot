@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
@@ -12,7 +12,7 @@ import { useConfirm } from '@/composables/useConfirm'
 import { useUnsavedGuard } from '@/composables/useUnsavedGuard'
 import type { InventoryItem, InventoryReason, InventoryUpdateRequest } from '@/types/api'
 import { compareDecimal, isValidDecimal } from '@/utils/decimal'
-import { showErrorToast } from '@/utils/errorMap'
+import { mapErrorMessage, showErrorToast } from '@/utils/errorMap'
 
 const route = useRoute()
 const router = useRouter()
@@ -33,11 +33,14 @@ const loading = ref(false)
 const submitting = ref(false)
 const loadError = ref<NormalizedError | null>(null)
 const conflict = ref('')
+const validationError = ref('')
 const dirty = ref(false)
 
 useUnsavedGuard(dirty)
 watch(form, () => {
-  dirty.value = true
+  if (!loading.value) {
+    dirty.value = true
+  }
 })
 
 async function loadItem(): Promise<void> {
@@ -52,6 +55,7 @@ async function loadItem(): Promise<void> {
       form.purchase_date = it.purchase_date ?? ''
       form.expiry_date = it.expiry_date ?? ''
       form.storage_location = it.storage_location ?? ''
+      await nextTick()
       dirty.value = false
     } catch (e) {
       loadError.value = e as NormalizedError
@@ -101,18 +105,23 @@ async function onSubmit(): Promise<void> {
     return
   }
   conflict.value = ''
+  validationError.value = ''
   const name = form.display_name.trim()
   const nameMax = isEdit.value ? 200 : 80
   if (name.length < 1 || name.length > nameMax) {
+    validationError.value = `名称需 1~${nameMax} 字`
     return
   }
   if (!isEdit.value && !form.unit.trim()) {
+    validationError.value = '请填写单位'
     return
   }
   if (!isValidDecimal(form.quantity, 3, 9)) {
+    validationError.value = '数量格式不正确（最多 3 位小数、9 位整数）'
     return
   }
   if (!isEdit.value && compareDecimal(form.quantity, '0') <= 0) {
+    validationError.value = '数量需大于 0'
     return
   }
   if (form.purchase_date && form.expiry_date && form.expiry_date < form.purchase_date) {
@@ -150,9 +159,18 @@ async function onSubmit(): Promise<void> {
   } catch (e) {
     const err = e as NormalizedError
     if (err.code === 'STATE_CONFLICT' && id.value) {
-      const fresh = await inventoryApi.get(id.value)
-      snapshot.value = fresh
-      conflict.value = '该食材已被其他操作修改，请核对最新值后重试'
+      try {
+        const fresh = await inventoryApi.get(id.value)
+        snapshot.value = fresh
+        conflict.value = '该食材已被其他操作修改，请核对最新值后重试'
+      } catch (e2) {
+        const err2 = e2 as NormalizedError
+        if (err2.code === 'RESOURCE_NOT_FOUND') {
+          router.push({ name: 'inventory' })
+        } else {
+          conflict.value = mapErrorMessage(err2)
+        }
+      }
     } else {
       showErrorToast(err)
     }
@@ -165,7 +183,7 @@ function onCancel(): void {
   router.push({ name: 'inventory' })
 }
 
-defineExpose({ form, onSubmit })
+defineExpose({ form, onSubmit, dirty, validationError })
 </script>
 
 <template>
@@ -192,6 +210,7 @@ defineExpose({ form, onSubmit })
         <el-form-item label="存储位置">
           <el-input v-model="form.storage_location" maxlength="100" placeholder="冷藏/冷冻/常温/自定义" />
         </el-form-item>
+        <el-alert v-if="validationError" type="error" :title="validationError" :closable="false" />
         <el-alert v-if="conflict" type="warning" :title="conflict" :closable="false" />
         <div class="form-actions">
           <el-button @click="onCancel">
