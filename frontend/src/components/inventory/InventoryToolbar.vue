@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 
 import { categories } from '@/api/inventory'
 import type { InventoryFilters } from '@/api/inventory'
@@ -32,6 +32,9 @@ onMounted(() => {
 })
 
 let timer: ReturnType<typeof setTimeout> | undefined
+onBeforeUnmount(() => {
+  clearTimeout(timer)
+})
 
 function emitChange(): void {
   emit('change', { ...local })

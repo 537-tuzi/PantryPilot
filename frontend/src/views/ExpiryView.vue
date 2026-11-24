@@ -9,7 +9,7 @@ import QuantityText from '@/components/QuantityText.vue'
 import StatusTag from '@/components/StatusTag.vue'
 import { useAsyncState } from '@/composables/useAsyncState'
 import type { InventoryItem } from '@/types/api'
-import { appToday, daysUntilDatePart } from '@/utils/appToday'
+import { appToday, expiryDayLabel } from '@/utils/appToday'
 
 const router = useRouter()
 const { data, loading, error, execute } = useAsyncState<InventoryItem[]>(() => inventoryApi.expiring())
@@ -24,17 +24,7 @@ onMounted(() => {
 })
 
 function daysLabel(item: InventoryItem): string {
-  if (!item.expiry_date) {
-    return '未设置到期日'
-  }
-  const d = daysUntilDatePart(item.expiry_date, today)
-  if (d < 0) {
-    return `已过期 ${-d} 天`
-  }
-  if (d === 0) {
-    return '今天到期'
-  }
-  return `${d} 天后到期`
+  return expiryDayLabel(item.expiry_date, today)
 }
 
 function viewInventory(item: InventoryItem): void {

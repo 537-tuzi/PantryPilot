@@ -18,3 +18,18 @@ export function daysUntilDatePart(target: string, today: string): number {
   const end = Date.UTC(ty, tm - 1, td)
   return Math.round((end - start) / 86400000)
 }
+
+/** 剩余天数文案（Home/Expiry 共用，避免复制漂移）。today 为空时抑制文案。 */
+export function expiryDayLabel(expiryDate: string | null | undefined, today: string): string {
+  if (!expiryDate) {
+    return '未设置到期日'
+  }
+  if (!today) {
+    return ''
+  }
+  const d = daysUntilDatePart(expiryDate, today)
+  if (d < 0) {
+    return `已过期 ${-d} 天`
+  }
+  return d === 0 ? '今天到期' : `${d} 天后到期`
+}

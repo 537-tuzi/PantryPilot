@@ -32,6 +32,17 @@ watch(
   { immediate: true },
 )
 
+// 每次打开重置目标/冲突态（同一行重开不残留上次输入）
+watch(
+  () => props.modelValue,
+  (open) => {
+    if (open) {
+      target.value = '0'
+      conflict.value = ''
+    }
+  },
+)
+
 const noChange = computed(
   () => currentItem.value !== null && compareDecimal(target.value, currentItem.value.quantity) === 0,
 )

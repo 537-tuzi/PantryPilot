@@ -9,6 +9,7 @@ const emit = defineEmits<{ success: []; error: [err: NormalizedError] }>()
 const auth = useAuthStore()
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
+const validationError = ref('')
 const form = reactive({ username: '', email: '', password: '', confirmPassword: '' })
 
 // 镜像后端 Unicode-aware 强度（str.islower/isupper/isdigit）；confirmPassword 仅前端。
@@ -39,8 +40,22 @@ async function onSubmit(): Promise<void> {
     return
   }
   formRef.value?.validate().catch(() => {})
-  // 确定性守卫：后端 400 无字段细节，前端必须完整镜像规则。
-  if (!usernameOk.value || !emailOk.value || !passwordOk.value || form.confirmPassword !== form.password) {
+  // 确定性守卫：后端 400 无字段细节，前端必须完整镜像规则；失败给内联反馈。
+  validationError.value = ''
+  if (!usernameOk.value) {
+    validationError.value = '用户名需 1~100 字'
+    return
+  }
+  if (!emailOk.value) {
+    validationError.value = '邮箱格式不正确'
+    return
+  }
+  if (!passwordOk.value) {
+    validationError.value = '密码需 8~128 位且含大小写字母与数字'
+    return
+  }
+  if (form.confirmPassword !== form.password) {
+    validationError.value = '两次密码不一致'
     return
   }
   submitting.value = true
@@ -53,6 +68,8 @@ async function onSubmit(): Promise<void> {
     submitting.value = false
   }
 }
+
+defineExpose({ form, onSubmit, validationError })
 </script>
 
 <template>
@@ -83,6 +100,13 @@ async function onSubmit(): Promise<void> {
     <el-form-item label="确认密码" prop="confirmPassword">
       <el-input v-model="form.confirmPassword" type="password" show-password autocomplete="new-password" />
     </el-form-item>
+    <el-alert
+      v-if="validationError"
+      type="error"
+      :title="validationError"
+      :closable="false"
+      class="register-error"
+    />
     <el-button type="primary" native-type="submit" :loading="submitting" :disabled="submitting" class="submit-btn">
       注册
     </el-button>

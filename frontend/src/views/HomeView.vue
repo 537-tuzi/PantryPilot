@@ -9,7 +9,8 @@ import QuantityText from '@/components/QuantityText.vue'
 import StatusTag from '@/components/StatusTag.vue'
 import { useAsyncState } from '@/composables/useAsyncState'
 import type { DashboardSummary, InventoryItem } from '@/types/api'
-import { daysUntilDatePart } from '@/utils/appToday'
+import { expiryDayLabel } from '@/utils/appToday'
+import { mapErrorMessage } from '@/utils/errorMap'
 
 const router = useRouter()
 const summaryState = useAsyncState<DashboardSummary>(() => dashboardApi.summary())
@@ -28,14 +29,7 @@ onMounted(() => {
 })
 
 function daysLabel(item: InventoryItem): string {
-  if (!today.value || !item.expiry_date) {
-    return ''
-  }
-  const d = daysUntilDatePart(item.expiry_date, today.value)
-  if (d < 0) {
-    return `已过期 ${-d} 天`
-  }
-  return d === 0 ? '今天到期' : `${d} 天后到期`
+  return expiryDayLabel(item.expiry_date, today.value)
 }
 </script>
 
@@ -43,6 +37,17 @@ function daysLabel(item: InventoryItem): string {
   <div>
     <PageHeader title="首页概览" description="库存统计、临期卡片、快捷入口。" page-id="UI-02" />
 
+    <el-alert
+      v-if="summaryState.error.value"
+      type="error"
+      :title="mapErrorMessage(summaryState.error.value)"
+      :closable="false"
+      class="summary-error"
+    >
+      <el-button size="small" @click="summaryState.execute()">
+        重试
+      </el-button>
+    </el-alert>
     <div class="stat-cards">
       <div class="stat-card" @click="router.push({ name: 'inventory' })">
         <span class="stat-label">库存总数</span>

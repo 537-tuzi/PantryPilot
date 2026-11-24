@@ -134,11 +134,14 @@ def seed() -> None:
                 {"user_id": user_id},
             )
             for name, _category, unit, qty, location, offset in INGREDIENTS:
-                # 关联食材库，使分类筛选（inner join ingredient_id）真实可用
-                ingredient_id = conn.execute(
-                    text("SELECT id FROM ingredient_catalog WHERE canonical_name = :name"),
-                    {"name": name},
-                ).scalar()
+                # 关联食材库，使分类筛选（inner join ingredient_id）真实可用；
+                # 食材库表缺失时降级为不关联（保持脚本跳过缺失表的约定）
+                ingredient_id = None
+                if table_exists(inspector, "ingredient_catalog"):
+                    ingredient_id = conn.execute(
+                        text("SELECT id FROM ingredient_catalog WHERE canonical_name = :name"),
+                        {"name": name},
+                    ).scalar()
                 conn.execute(
                     text(
                         """

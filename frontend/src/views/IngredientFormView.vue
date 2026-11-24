@@ -10,7 +10,7 @@ import FourState from '@/components/FourState.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { useConfirm } from '@/composables/useConfirm'
 import { useUnsavedGuard } from '@/composables/useUnsavedGuard'
-import type { InventoryItem, InventoryReason, InventoryUpdateRequest } from '@/types/api'
+import type { InventoryItem, InventoryUpdateRequest } from '@/types/api'
 import { compareDecimal, isValidDecimal } from '@/utils/decimal'
 import { mapErrorMessage, showErrorToast } from '@/utils/errorMap'
 
@@ -26,7 +26,6 @@ const form = reactive({
   purchase_date: '',
   expiry_date: '',
   storage_location: '',
-  reason: 'adjust' as InventoryReason,
 })
 const snapshot = ref<InventoryItem | null>(null)
 const loading = ref(false)
@@ -46,6 +45,7 @@ watch(form, () => {
 async function loadItem(): Promise<void> {
   if (isEdit.value && id.value) {
     loading.value = true
+    loadError.value = null
     try {
       const it = await inventoryApi.get(id.value)
       snapshot.value = it
@@ -183,7 +183,7 @@ function onCancel(): void {
   router.push({ name: 'inventory' })
 }
 
-defineExpose({ form, onSubmit, dirty, validationError })
+defineExpose({ form, onSubmit, dirty, validationError, loadItem })
 </script>
 
 <template>
