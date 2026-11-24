@@ -3,20 +3,9 @@ import { ref } from 'vue'
 
 import client, { TOKEN_KEY } from '@/api/client'
 
-/** 令牌响应结构，与 文档/05 §10 认证契约一致。 */
-export interface TokenResponse {
-  access_token: string
-  token_type: string
-  expires_in: number
-}
+import type { TokenResponse } from '@/types/api'
 
-/** 用户信息。 */
-export interface UserResponse {
-  id: string
-  username: string
-  email: string
-  is_active: boolean
-}
+export type { TokenResponse, UserResponse } from '@/types/api'
 
 /** 登录态。归属：A 组。 */
 export const useAuthStore = defineStore('auth', () => {
