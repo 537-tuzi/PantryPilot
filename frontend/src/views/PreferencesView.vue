@@ -110,8 +110,8 @@ async function onSave(event?: Event): Promise<void> {
     saveError.value = '烹饪时间需 1~1440 分钟'
     return
   }
-  if (form.default_budget === null || form.default_budget < 0 || !budgetDecimalsOk()) {
-    saveError.value = '预算需非负且最多 2 位小数'
+  if (form.default_budget === null || form.default_budget < 0 || form.default_budget > 99999999.99 || !budgetDecimalsOk()) {
+    saveError.value = '预算需在 0~99999999.99 且最多 2 位小数'
     return
   }
   // 清空原本非空的过敏原 = 移除硬约束，二次确认
@@ -149,12 +149,14 @@ async function onSave(event?: Event): Promise<void> {
   }
 }
 
-function onReset(): void {
+async function onReset(): Promise<void> {
   if (baseline.value) {
     applyBaseline(baseline.value)
   } else {
     applyDefaults()
   }
+  // 表单更新触发的深度 watcher 是 pre-flush 异步的，需等其 flush 后再清 dirty
+  await nextTick()
   dirty.value = false
 }
 

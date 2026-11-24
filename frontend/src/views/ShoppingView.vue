@@ -28,7 +28,7 @@ function onFilter(value: ShoppingStatus | undefined): void {
   setPage(1)
 }
 
-async function patchStatus(item: ShoppingItem, status: ShoppingStatus): Promise<void> {
+async function patchStatus(item: ShoppingItem, status: ShoppingStatus): Promise<boolean> {
   pendingIds.value.add(item.id)
   try {
     const updated = await shoppingApi.updateStatus(item.id, status)
@@ -36,6 +36,7 @@ async function patchStatus(item: ShoppingItem, status: ShoppingStatus): Promise<
     if (idx >= 0) {
       items.value[idx] = updated
     }
+    return true
   } catch (e) {
     const err = e as NormalizedError
     if (err.code === 'RESOURCE_NOT_FOUND') {
@@ -45,6 +46,7 @@ async function patchStatus(item: ShoppingItem, status: ShoppingStatus): Promise<
     } else {
       ElMessage.error(mapErrorMessage(err))
     }
+    return false
   } finally {
     pendingIds.value.delete(item.id)
   }
@@ -52,8 +54,10 @@ async function patchStatus(item: ShoppingItem, status: ShoppingStatus): Promise<
 
 function onToggle(item: ShoppingItem): void {
   const target: ShoppingStatus = item.status === 'purchased' ? 'pending' : 'purchased'
-  void patchStatus(item, target).then(() => {
-    ElMessage.success(target === 'purchased' ? '已标记为已购' : '已标记为待购')
+  void patchStatus(item, target).then((ok) => {
+    if (ok) {
+      ElMessage.success(target === 'purchased' ? '已标记为已购' : '已标记为待购')
+    }
   })
 }
 function onCancel(item: ShoppingItem): void {
