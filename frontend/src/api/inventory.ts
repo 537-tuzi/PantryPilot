@@ -8,13 +8,16 @@ import type {
   PageResult,
 } from '@/types/api'
 
-export interface InventoryListParams {
-  page?: number
-  page_size?: number
+export interface InventoryFilters {
   name?: string
   category?: string
   status?: InventoryStatus
   include_archived?: boolean
+}
+
+export interface InventoryListParams extends InventoryFilters {
+  page?: number
+  page_size?: number
 }
 
 export function list(params: InventoryListParams = {}): Promise<PageResult<InventoryItem>> {
