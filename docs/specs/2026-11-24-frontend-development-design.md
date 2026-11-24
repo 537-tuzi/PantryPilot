@@ -240,6 +240,13 @@ export interface ShoppingItem {
 | D10 | R-08 隐私信任差异 | 前端隐私说明 + AI 关闭入口（Sprint 2）；不宣称"数据不出户" | R-08 |
 | D11 | 无服务端登出/刷新，token localStorage XSS 可读 | 客户端登出 + 不日志 token + 无 v-html；登记限制 | DS-07 |
 | D12 | Sprint 2 AI 依赖 C 组后端 + 模型选型前置 | 前端 Mock 先行，契约按 06 §4 冻结 | 02 §10 |
+| D13 | jsdom 下 el-form 字段不注册（validate 恒 true） | onSubmit 确定性手动守卫保证提交门禁；IngredientForm 内联 validationError 反馈；auth 表单 el-form 规则兜底生产 UX | 审查 Task 10 |
+| D14 | InventoryTable 用响应式 div 列表（CSS grid）替代 el-table | jsdom 可测 + NFR-009；功能等价 | 审查 Task 11 |
+| D15 | 日期用 el-input type=date、unit 自由输入替代 el-date-picker/el-select | jsdom 可测；功能等价 | 实现 |
+| D16 | reason 全自动推导（增 add/减 consume/元数据 adjust），无用户选择器 | 契约正确；用户不可 override 为 adjust（minor 延后） | 审查 Minor |
+| D17 | 筛选 query 镜像部分实现（toolbar watch 同步深链；完整 page/query 镜像与创建编辑保留 query 延后） | 深链筛选可见已修；刷新保留筛选 minor 延后 | 审查 #4 |
+| D18 | preferences/shopping/mealPlans service 签名文件延后 Sprint 2/3 | 类型已冻结（types/api.ts）；本轮仅 4 个 service | spec §4.5 |
+| D19 | 单位预设常量未建；expiring 大数组渲染上限未做；useAsyncState 序号守卫未加 | minor 延后 | 审查 Minor |
 
 ---
 
