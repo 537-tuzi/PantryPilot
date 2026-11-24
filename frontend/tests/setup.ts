@@ -1,5 +1,7 @@
 import { beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import { config } from '@vue/test-utils'
+import ElementPlus from 'element-plus'
 
 // jsdom 缺失的浏览器 API polyfill（el-table/el-select/el-pagination 依赖）
 globalThis.ResizeObserver = class {
@@ -51,6 +53,9 @@ vi.mock('element-plus', async (importOriginal) => {
     },
   }
 })
+
+// 组件测试全局注册 Element Plus（el-skeleton/el-empty/el-input 等需解析）
+config.global.plugins.push(ElementPlus)
 
 beforeEach(() => {
   setActivePinia(createPinia())
