@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
 
-vi.mock('@/api/inventory', () => ({ list: vi.fn(), create: vi.fn(), get: vi.fn(), update: vi.fn(), archive: vi.fn(), expiring: vi.fn() }))
+vi.mock('@/api/inventory', () => ({ list: vi.fn(), create: vi.fn(), get: vi.fn(), update: vi.fn(), archive: vi.fn(), expiring: vi.fn(), categories: vi.fn() }))
 vi.mock('@/api/dashboard', () => ({ summary: vi.fn() }))
 import * as api from '@/api/inventory'
 import * as dash from '@/api/dashboard'
@@ -37,6 +37,7 @@ function formRouter() {
 beforeEach(() => {
   setActivePinia(createPinia())
   vi.clearAllMocks()
+  vi.mocked(api.categories).mockResolvedValue([])
   clearAppError()
 })
 
@@ -92,6 +93,13 @@ it('#5 FourState 错误经中文映射不渲染英文', () => {
 it('#6 分类筛选诚实提示', () => {
   const w = mount(InventoryToolbar, { props: { modelValue: {} } })
   expect(w.text()).toContain('仅匹配已关联食材库')
+})
+
+it('#6b 分类选项来自后端真实端点（无硬编码）', async () => {
+  vi.mocked(api.categories).mockResolvedValue(['乳制品', '蔬菜'])
+  mount(InventoryToolbar, { props: { modelValue: {} } })
+  await flushPromises()
+  expect(api.categories).toHaveBeenCalled()
 })
 
 it('#7 首页禁用规划按钮由 span 包裹（tooltip 可显示）', async () => {

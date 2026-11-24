@@ -43,6 +43,9 @@ class InventoryService:
     def __init__(self, inventory: InventoryRepository | None = None) -> None:
         self._inventory = inventory or InventoryRepository()
 
+    def list_categories(self, db: Session) -> list[str]:
+        return self._inventory.list_categories(db)
+
     def create(
         self, db: Session, user_id: UUID, payload: InventoryCreatePayload
     ) -> InventoryResponse:

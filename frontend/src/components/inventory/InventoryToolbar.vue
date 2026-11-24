@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 
+import { categories } from '@/api/inventory'
 import type { InventoryFilters } from '@/api/inventory'
 import type { InventoryStatus } from '@/types/api'
 
@@ -17,6 +18,18 @@ watch(
   },
   { deep: true },
 )
+
+// 分类选项来自后端真实食材库（无硬编码）
+const categoryOptions = ref<string[]>([])
+onMounted(() => {
+  categories()
+    .then((list) => {
+      categoryOptions.value = list
+    })
+    .catch(() => {
+      categoryOptions.value = []
+    })
+})
 
 let timer: ReturnType<typeof setTimeout> | undefined
 
@@ -54,10 +67,7 @@ function onArchived(value: boolean): void {
       @input="onNameInput"
     />
     <el-select :model-value="local.category" placeholder="分类" clearable @change="onCategory">
-      <el-option label="乳制品" value="乳制品" />
-      <el-option label="蔬菜" value="蔬菜" />
-      <el-option label="蛋类" value="蛋类" />
-      <el-option label="肉类" value="肉类" />
+      <el-option v-for="c in categoryOptions" :key="c" :label="c" :value="c" />
     </el-select>
     <span class="category-hint">分类仅匹配已关联食材库的条目</span>
     <el-select :model-value="local.status" placeholder="状态" clearable @change="onStatus">

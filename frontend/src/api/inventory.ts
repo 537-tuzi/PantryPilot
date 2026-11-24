@@ -44,3 +44,8 @@ export function archive(id: string): Promise<void> {
 export function expiring(): Promise<InventoryItem[]> {
   return client.get<InventoryItem[]>('/inventory/expiring').then((r) => r.data)
 }
+
+/** 真实分类列表（后端食材库 distinct category），供筛选下拉，无硬编码。 */
+export function categories(): Promise<string[]> {
+  return client.get<string[]>('/inventory/categories').then((r) => r.data)
+}

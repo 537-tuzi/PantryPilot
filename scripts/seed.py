@@ -124,21 +124,37 @@ def seed() -> None:
             if user_id is None:
                 print("未找到演示账户，跳过库存写入")
                 return
+            # 重跑幂等：先清演示流水与库存（FK 顺序），再写入关联食材库的批次
+            conn.execute(
+                text("DELETE FROM inventory_transactions WHERE user_id = :user_id"),
+                {"user_id": user_id},
+            )
+            conn.execute(
+                text("DELETE FROM inventory_items WHERE user_id = :user_id"),
+                {"user_id": user_id},
+            )
             for name, _category, unit, qty, location, offset in INGREDIENTS:
+                # 关联食材库，使分类筛选（inner join ingredient_id）真实可用
+                ingredient_id = conn.execute(
+                    text("SELECT id FROM ingredient_catalog WHERE canonical_name = :name"),
+                    {"name": name},
+                ).scalar()
                 conn.execute(
                     text(
                         """
                         INSERT INTO inventory_items
-                            (id, user_id, display_name, quantity, unit, purchase_date, expiry_date,
-                             storage_location, version, created_at, updated_at)
+                            (id, user_id, ingredient_id, display_name, quantity, unit,
+                             purchase_date, expiry_date, storage_location, version,
+                             created_at, updated_at)
                         VALUES
-                            (:id, :user_id, :name, :qty, :unit, :purchase_date, :expiry_date,
-                             :location, 1, now(), now())
+                            (:id, :user_id, :ingredient_id, :name, :qty, :unit,
+                             :purchase_date, :expiry_date, :location, 1, now(), now())
                         """
                     ),
                     {
                         "id": uuid4(),
                         "user_id": user_id,
+                        "ingredient_id": ingredient_id,
                         "name": name,
                         "qty": qty,
                         "unit": unit,
@@ -147,7 +163,7 @@ def seed() -> None:
                         "location": location,
                     },
                 )
-            print("已写入库存批次（含临期与过期样例）")
+            print("已写入库存批次（含临期与过期样例，关联食材库）")
 
 
 if __name__ == "__main__":

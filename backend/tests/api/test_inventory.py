@@ -671,3 +671,27 @@ def test_optimistic_lock_blocks_concurrent_database_updates() -> None:
             finally:
                 cleanup_engine.dispose()
         engine.dispose()
+
+
+def test_list_categories_distinct_from_catalog(
+    client: TestClient, db_session: Session, ingredient: IngredientCatalog
+) -> None:
+    """GET /inventory/categories 返回食材库 distinct 分类（真实数据，供前端筛选下拉）。"""
+    token = register(client, username="cat_user", email="cat.user@example.com")
+    db_session.add(
+        IngredientCatalog(
+            canonical_name=f"tomato-dup-{uuid4().hex[:8]}", category="vegetable", default_unit="kg"
+        )
+    )
+    db_session.add(
+        IngredientCatalog(
+            canonical_name=f"milk-{uuid4().hex[:8]}", category="dairy", default_unit="盒"
+        )
+    )
+    db_session.commit()
+    response = client.get(f"{INVENTORY_URL}/categories", headers=auth_headers(token))
+    assert response.status_code == 200, response.text
+    categories = response.json()
+    assert "vegetable" in categories
+    assert "dairy" in categories
+    assert categories.count("vegetable") == 1
