@@ -349,7 +349,7 @@ FastAPI 路由 (app/api/v1/endpoints/*.py)     —— 薄：取 current_user.id�
 24. `SELECT ... FOR UPDATE` **不会刷新已在 identity map 中的实体**（缺 `populate_existing()`），可能读到陈旧的 `quantity`/`version`。
 25. Vitest `include` 只覆盖 `tests/`，**`src/` 下的 spec 被静默忽略** —— Vue 生态惯例是就近放，A 组很容易踩空，「修复缺陷必须补回归用例」会形同虚设。
 26. `X-Request-ID` 完全由客户端控制且无字符/长度校验；4xx 与认证失败**完全不落日志**；日志脱敏正则遗漏 `secret_key=` / `api_key=` / Basic 认证 / Cookie。
-27. nginx 的 `proxy_pass http://backend:8000` **在启动时解析上游** —— 重建后端容器换 IP 后前端持续 502，必须手动 `restart frontend`。
+27. ~~nginx 的 `proxy_pass http://backend:8000` 在启动时解析上游~~ → **已修**（2026-11-21）：实测后端从 `.5` 换到 `.6` 后，前端持续 **502**（nginx 日志 `upstream: "http://172.18.0.3:8000"`、`connect() failed`），而后端直连 200。`dev.sh up` / `--force-recreate` / 机器重启都会触发。现改为 `resolver 127.0.0.11 valid=10s ipv6=off;` + `set $backend http://backend:8000; proxy_pass $backend$request_uri;`（变量形式才会每次请求重新解析）。⚠️ 变量形式的 `proxy_pass` **不会自动带原始 URI**，必须显式拼 `$request_uri`。
 28. `scripts/dev.sh` 的 `backend-test` 镜像**永不重建**，改 `requirements-dev.txt` 后测试仍跑在旧依赖上（源码挂载了、依赖没有）。
 29. 迁移 `20261121_0002` 未用 `op.f()`，`shopping_items` 的数量检查在库里叫 `ck_shopping_items_ck_shopping_items_quantity_positive`（前缀重复）。**功能正常**（实测能拒绝 `quantity=0`）、**autogenerate 也不报漂移**（实测生成的 `upgrade()` 为空），但迁移里引用该约束必须用这个名字。要修正应在**新增迁移**里改名（不要改已合并的迁移），且 `backend/alembic/**` 归 B 组。
 30. `scripts/install_docker.sh` **覆盖式重写** `/etc/docker/daemon.json`，会清掉公司环境自带的 registry-mirror / insecure-registries。
