@@ -14,9 +14,10 @@
 from __future__ import annotations
 
 import sys
-from datetime import date, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 
 def _bootstrap_import_path() -> None:
@@ -37,7 +38,7 @@ def _bootstrap_import_path() -> None:
 
 _bootstrap_import_path()
 
-from sqlalchemy import inspect, text  # noqa: E402
+from sqlalchemy import bindparam, inspect, text  # noqa: E402
 
 from app.core.config import settings  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
@@ -66,7 +67,10 @@ def table_exists(inspector: object, name: str) -> bool:
 def seed() -> None:
     """写入合成数据。"""
     inspector = inspect(engine)
-    today = date.today()
+    # 「今天」必须与应用一致：容器系统时区是 UTC，而临期判定按 APP_TIMEZONE 的
+    # 今天计算（docs/adr/0001-app-timezone.md）。用 date.today() 会在 UTC 16:00
+    # 之后（即上海时间次日 0 点起）差一天，导致演示数据的到期日偏移。
+    today = datetime.now(ZoneInfo(settings.app_timezone)).date()
 
     known = ("users", "ingredient_catalog", "inventory_items")
     if not any(table_exists(inspector, name) for name in known):
@@ -124,7 +128,39 @@ def seed() -> None:
             if user_id is None:
                 print("未找到演示账户，跳过库存写入")
                 return
+
+            # 幂等：重复执行 seed 时先清掉本脚本上次写入的同名批次，否则库存会成倍翻倍。
+            # 只按「名称 + 单位」匹配本脚本的演示食材，演示账户手工添加的条目不受影响。
+            seeded_pairs = [(name, unit) for name, _category, unit, *_rest in INGREDIENTS]
+            seeded_items = conn.execute(
+                text(
+                    """
+                    SELECT id FROM inventory_items
+                    WHERE user_id = :user_id AND (display_name, unit) IN :pairs
+                    """
+                ).bindparams(bindparam("pairs", expanding=True)),
+                {"user_id": user_id, "pairs": seeded_pairs},
+            ).scalars().all()
+
+            if seeded_items:
+                # inventory_transactions.inventory_item_id 是 ON DELETE RESTRICT，
+                # 必须先删流水再删库存批次。
+                if table_exists(inspector, "inventory_transactions"):
+                    conn.execute(
+                        text(
+                            "DELETE FROM inventory_transactions "
+                            "WHERE inventory_item_id = ANY(:ids)"
+                        ),
+                        {"ids": list(seeded_items)},
+                    )
+                conn.execute(
+                    text("DELETE FROM inventory_items WHERE id = ANY(:ids)"),
+                    {"ids": list(seeded_items)},
+                )
+                print(f"已清理上次写入的演示批次 {len(seeded_items)} 条")
+
             for name, _category, unit, qty, location, offset in INGREDIENTS:
+                item_id = uuid4()
                 conn.execute(
                     text(
                         """
@@ -137,7 +173,7 @@ def seed() -> None:
                         """
                     ),
                     {
-                        "id": uuid4(),
+                        "id": item_id,
                         "user_id": user_id,
                         "name": name,
                         "qty": qty,
@@ -147,7 +183,29 @@ def seed() -> None:
                         "location": location,
                     },
                 )
-            print("已写入库存批次（含临期与过期样例）")
+                # 每次入库都要写流水：本仓的不变量是 sum(delta_quantity) == quantity。
+                # 缺流水会让演示数据的审计链断裂（详见 docs/adr/0002 与库存流水约束）。
+                if table_exists(inspector, "inventory_transactions"):
+                    conn.execute(
+                        text(
+                            """
+                            INSERT INTO inventory_transactions
+                                (id, user_id, inventory_item_id, delta_quantity, unit,
+                                 reason, source_type, created_at, updated_at)
+                            VALUES
+                                (:id, :user_id, :inventory_item_id, :delta, :unit,
+                                 'add', 'manual', now(), now())
+                            """
+                        ),
+                        {
+                            "id": uuid4(),
+                            "user_id": user_id,
+                            "inventory_item_id": item_id,
+                            "delta": qty,
+                            "unit": unit,
+                        },
+                    )
+            print("已写入库存批次（含临期与过期样例）及其入库流水")
 
 
 if __name__ == "__main__":

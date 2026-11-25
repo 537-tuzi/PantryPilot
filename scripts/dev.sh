@@ -101,19 +101,24 @@ cmd_test_db() {
     ok "测试库已存在"
   fi
 
+  # 迁移必须先于授权：授权脚本按表级权限 GRANT，业务表必须先存在，
+  # 否则会报 relation "users" does not exist 并导致并发测试因权限不足而失败。
+  # 顺序说明见 docs/test-database-setup.md §一。
+  info "对测试库执行数据库迁移"
+  dc_test run --rm -T backend-test alembic upgrade head
+  ok "测试库迁移完成"
+
   if pw="$(maintenance_password)"; then
-    info "配置测试维护账号（顺序：先迁移库，再授权）"
-    dc exec -T db psql -U "$PG_USER" -d postgres -v maintenance_password="$pw" \
+    info "配置测试维护账号（迁移之后授权）"
+    # ON_ERROR_STOP=1：授权失败必须让脚本以非零码退出，不能静默成功。
+    dc exec -T db psql -U "$PG_USER" -d postgres -v ON_ERROR_STOP=1 \
+      -v maintenance_password="$pw" \
       -f /scripts/provision-test-maintenance-role.sql >/dev/null
     ok "维护账号已配置"
   else
     warn "未在 .env 填写 TEST_MAINTENANCE_DATABASE_URL，跳过维护账号配置"
     warn "（相关并发测试会自动跳过，不影响其他用例）"
   fi
-
-  info "对测试库执行数据库迁移"
-  dc_test run --rm -T backend-test alembic upgrade head
-  ok "测试库迁移完成（可以跑测试了）"
 }
 
 cmd_test() {
@@ -138,10 +143,22 @@ cmd_seed() {
 cmd_backup() {
   require_docker
   mkdir -p backups
-  local stamp file
+  local stamp file tmp
   stamp="$(date +%Y%m%d-%H%M%S)"
   file="backups/pantrypilot-$stamp.sql"
-  dc exec -T db pg_dump -U "$PG_USER" "$PG_DB" > "$file"
+  # 先写临时文件：pg_dump 失败时不要留下 0 字节的"备份"，
+  # 否则它会被后续 restore 当成有效备份，把数据库清成空库。
+  tmp="$file.partial"
+  rm -f "$tmp"
+  if ! dc exec -T db pg_dump -U "$PG_USER" "$PG_DB" > "$tmp"; then
+    rm -f "$tmp"
+    die "备份失败（pg_dump 报错），未生成备份文件"
+  fi
+  if [ ! -s "$tmp" ]; then
+    rm -f "$tmp"
+    die "备份失败：生成的文件为空，未保留任何备份"
+  fi
+  mv "$tmp" "$file"
   ok "备份完成：$file（恢复前请先在隔离环境验证）"
 }
 
@@ -149,17 +166,24 @@ cmd_restore() {
   require_docker
   local file="${1:-}"
   [ -n "$file" ] && [ -f "$file" ] || die "用法：bash scripts/dev.sh restore <备份文件>"
+  # 恢复会先清空 public schema。备份文件不可用时必须拒绝执行，
+  # 否则会把数据库清成空库并报告"恢复完成"。
+  [ -s "$file" ] || die "备份文件为空：$file（恢复会清空数据库，已拒绝执行）"
+  grep -q "CREATE TABLE" "$file" \
+    || die "备份文件内容不像 pg_dump 输出：$file（恢复会清空数据库，已拒绝执行）"
   printf '将覆盖数据库 %s（会先清空 public schema），继续？[y/N] ' "$PG_DB"
   read -r answer
   [ "$answer" = "y" ] || { echo "已取消"; exit 0; }
   dc exec -T db psql -v ON_ERROR_STOP=1 -U "$PG_USER" -d "$PG_DB" \
     -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;" >/dev/null
   dc exec -T db psql -v ON_ERROR_STOP=1 -U "$PG_USER" -d "$PG_DB" < "$file"
-  ok "恢复完成，请验证：curl http://localhost/health"
+  ok "恢复完成，请验证：curl http://localhost/api/v1/health 与一次真实查询（/health 不查库，库被清空也照样返回 ok）"
 }
 
 cmd_check() {
-  bash "$ROOT_DIR/scripts/check_env.sh" "${@:-}"
+  # 必须用 "$@"：写成 "${@:-}" 会在无参数时传入一个空字符串，
+  # check_env.sh 会把它当成未知参数并以退出码 2 结束，自检根本不会跑。
+  bash "$ROOT_DIR/scripts/check_env.sh" "$@"
 }
 
 cmd_shell() {
