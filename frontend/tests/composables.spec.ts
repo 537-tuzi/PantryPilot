@@ -26,6 +26,73 @@ it('useAsyncState 失败写 error', async () => {
   expect(error.value).toEqual(err)
 })
 
+it('useAsyncState 丢弃过期响应（后发先到的旧请求不覆盖新数据）', async () => {
+  let resolveFirst: (v: string) => void = () => {}
+  const fn = vi
+    .fn()
+    .mockImplementationOnce(
+      () =>
+        new Promise<string>((r) => {
+          resolveFirst = r
+        }),
+    )
+    .mockImplementationOnce(() => Promise.resolve('fresh'))
+  const { data, error, execute } = useAsyncState(fn)
+  const first = execute()
+  const second = execute()
+  await second
+  expect(data.value).toBe('fresh')
+  resolveFirst('stale')
+  await first
+  expect(data.value).toBe('fresh')
+  expect(error.value).toBeNull()
+})
+
+it('useAsyncState 过期请求失败不覆盖新请求的成功结果', async () => {
+  const staleErr = { code: 'NETWORK_ERROR', message: 'stale failed', requestId: '', status: 0 }
+  let rejectFirst: (e: unknown) => void = () => {}
+  const fn = vi
+    .fn()
+    .mockImplementationOnce(
+      () =>
+        new Promise<string>((_r, reject) => {
+          rejectFirst = reject
+        }),
+    )
+    .mockImplementationOnce(() => Promise.resolve('fresh'))
+  const { data, error, loading, execute } = useAsyncState(fn)
+  const first = execute()
+  const second = execute()
+  await second
+  expect(data.value).toBe('fresh')
+  expect(loading.value).toBe(false)
+  rejectFirst(staleErr)
+  await first
+  // 旧请求的失败不应把界面打成错误态
+  expect(error.value).toBeNull()
+  expect(data.value).toBe('fresh')
+  expect(loading.value).toBe(false)
+})
+
+it('useAsyncState reset 让在途请求失效', async () => {
+  let resolveFirst: (v: string) => void = () => {}
+  const fn = vi.fn().mockImplementationOnce(
+    () =>
+      new Promise<string>((r) => {
+        resolveFirst = r
+      }),
+  )
+  const { data, loading, execute, reset } = useAsyncState(fn)
+  const pending = execute()
+  reset()
+  expect(data.value).toBeNull()
+  expect(loading.value).toBe(false)
+  resolveFirst('late')
+  await pending
+  // reset 之后旧响应不应把数据写回来
+  expect(data.value).toBeNull()
+})
+
 it('usePagination setPageSize 重置 page=1', () => {
   const fetcher = vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, page_size: 50 })
   const { page, setPageSize } = usePagination(fetcher)
