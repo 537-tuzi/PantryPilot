@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import PlaceholderView from '@/components/PlaceholderView.vue'
+import { useRouter } from 'vue-router'
+
+// Sprint 1 不调用任何计划/确认 API（计划生成属 Sprint 2，确认扣减属 Sprint 3）。
+const router = useRouter()
 </script>
 
 <template>
-  <PlaceholderView
-    page-id="UI-08"
-    title="计划结果"
-    desc="菜谱、用量、步骤、缺失项、约束说明。"
-    :ops="['确认用量', '加采购清单']"
-    todo="确认时携带 Idempotency-Key 调用 /meal-plans/{id}/confirm；确认前不得改动库存（FR-014/015）。"
-  />
+  <el-empty description="计划结果与确认扣减将在 Sprint 2/3 开放。确认契约（Idempotency-Key + 行级 meal_plan_ingredient_id）已冻结。">
+    <el-button type="primary" @click="router.push({ name: 'home' })">
+      返回首页
+    </el-button>
+  </el-empty>
 </template>

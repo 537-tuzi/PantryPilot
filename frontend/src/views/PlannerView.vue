@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import PlaceholderView from '@/components/PlaceholderView.vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 </script>
 
 <template>
-  <PlaceholderView
-    page-id="UI-07"
-    title="AI 膳食规划"
-    desc="人数、预算、时间、偏好、补充要求。"
-    :ops="['生成', '重新生成']"
-    todo="接入 /ai/meal-plans；人数 1~12、预算非负、时间正整数；生成期间展示加载态（FR-012）。"
-  />
+  <el-empty description="AI 膳食规划将在 Sprint 2 开放（后端 /ai/meal-plans 待实现）。">
+    <el-button type="primary" @click="router.push({ name: 'home' })">
+      返回首页
+    </el-button>
+  </el-empty>
 </template>

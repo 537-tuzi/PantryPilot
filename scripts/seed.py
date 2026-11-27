@@ -128,9 +128,13 @@ def seed() -> None:
             if user_id is None:
                 print("未找到演示账户，跳过库存写入")
                 return
-
-            # 幂等：重复执行 seed 时先清掉本脚本上次写入的同名批次，否则库存会成倍翻倍。
-            # 只按「名称 + 单位」匹配本脚本的演示食材，演示账户手工添加的条目不受影响。
+            # 重跑幂等：先清掉**本脚本上次写入的批次**（演示账户 + 同名同单位），
+            # 再写入关联食材库的批次。
+            #
+            # 范围刻意收窄到「名称 + 单位」与 INGREDIENTS 匹配的批次：
+            # 演示账户上手工添加的条目不属于本脚本的产物，不该被 seed 顺手清掉。
+            # 清理顺序必须是先流水后库存 —— inventory_transactions.inventory_item_id
+            # 是 ON DELETE RESTRICT。
             seeded_pairs = [(name, unit) for name, _category, unit, *_rest in INGREDIENTS]
             seeded_items = conn.execute(
                 text(
@@ -143,8 +147,6 @@ def seed() -> None:
             ).scalars().all()
 
             if seeded_items:
-                # inventory_transactions.inventory_item_id 是 ON DELETE RESTRICT，
-                # 必须先删流水再删库存批次。
                 if table_exists(inspector, "inventory_transactions"):
                     conn.execute(
                         text(
@@ -160,21 +162,31 @@ def seed() -> None:
                 print(f"已清理上次写入的演示批次 {len(seeded_items)} 条")
 
             for name, _category, unit, qty, location, offset in INGREDIENTS:
+                # 关联食材库，使分类筛选（inner join ingredient_id）真实可用；
+                # 食材库表缺失时降级为不关联（保持脚本跳过缺失表的约定）
+                ingredient_id = None
+                if table_exists(inspector, "ingredient_catalog"):
+                    ingredient_id = conn.execute(
+                        text("SELECT id FROM ingredient_catalog WHERE canonical_name = :name"),
+                        {"name": name},
+                    ).scalar()
                 item_id = uuid4()
                 conn.execute(
                     text(
                         """
                         INSERT INTO inventory_items
-                            (id, user_id, display_name, quantity, unit, purchase_date, expiry_date,
-                             storage_location, version, created_at, updated_at)
+                            (id, user_id, ingredient_id, display_name, quantity, unit,
+                             purchase_date, expiry_date, storage_location, version,
+                             created_at, updated_at)
                         VALUES
-                            (:id, :user_id, :name, :qty, :unit, :purchase_date, :expiry_date,
-                             :location, 1, now(), now())
+                            (:id, :user_id, :ingredient_id, :name, :qty, :unit,
+                             :purchase_date, :expiry_date, :location, 1, now(), now())
                         """
                     ),
                     {
                         "id": item_id,
                         "user_id": user_id,
+                        "ingredient_id": ingredient_id,
                         "name": name,
                         "qty": qty,
                         "unit": unit,
@@ -205,7 +217,7 @@ def seed() -> None:
                             "unit": unit,
                         },
                     )
-            print("已写入库存批次（含临期与过期样例）及其入库流水")
+            print("已写入库存批次（含临期与过期样例，关联食材库）及其入库流水")
 
 
 if __name__ == "__main__":
