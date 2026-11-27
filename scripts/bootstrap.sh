@@ -29,6 +29,12 @@ s = s.replace("SECRET_KEY=change-me-to-a-long-random-string",
               f"SECRET_KEY={secrets.token_urlsafe(48)}")
 p.write_text(s)
 EOF
+  # 必须回读校验：上面的 python 失败会被 `|| true` 吞掉，
+  # 而后端在 SECRET_KEY 仍是占位符时会拒绝启动，错误点离失败点很远。
+  if grep -q "^SECRET_KEY=change-me-to-a-long-random-string$" .env; then
+    die "未能写入随机 SECRET_KEY（.env 中仍是占位符）。请手动执行："
+    die "  sed -i \"s|^SECRET_KEY=.*|SECRET_KEY=\$(openssl rand -hex 32)|\" .env"
+  fi
   ok "已生成 .env 并写入随机 SECRET_KEY"
 else
   echo "    .env 已存在"

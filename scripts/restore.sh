@@ -15,6 +15,17 @@ fi
 POSTGRES_USER="${POSTGRES_USER:-pantry}"
 POSTGRES_DB="${POSTGRES_DB:-pantrypilot}"
 
+# 恢复会先清空 public schema。备份文件不可用时必须拒绝执行，
+# 否则会把数据库清成空库并报告"恢复完成"。
+if [ ! -s "$BACKUP_FILE" ]; then
+  echo "备份文件为空：$BACKUP_FILE（恢复会清空数据库，已拒绝执行）" >&2
+  exit 1
+fi
+if ! grep -q "CREATE TABLE" "$BACKUP_FILE"; then
+  echo "备份文件内容不像 pg_dump 输出：$BACKUP_FILE（恢复会清空数据库，已拒绝执行）" >&2
+  exit 1
+fi
+
 echo "将使用 $BACKUP_FILE 覆盖数据库 $POSTGRES_DB（会先清空 public schema），继续？[y/N]"
 read -r answer
 if [ "$answer" != "y" ]; then

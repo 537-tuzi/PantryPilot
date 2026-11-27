@@ -16,9 +16,11 @@ bash scripts/dev.sh test-db    # 建库 → 授权维护账号 → 迁移测试�
 bash scripts/dev.sh test       # 准备测试库并在容器内跑 pytest
 ```
 
-`test-db` 内部固定按 **建库 → 授权维护账号 → 迁移测试库** 的顺序执行。
+`test-db` 内部固定按 **建库 → 迁移测试库 → 授权维护账号** 的顺序执行。
 顺序不可颠倒：授权脚本按表级权限授权，**必须先有业务表存在**，
-否则会报 `relation "users" does not exist`。
+否则会报 `relation "users" does not exist`；此时 psql 未开 `ON_ERROR_STOP`
+会继续执行并报「成功」，最终导致并发测试因权限不足而失败。
+`dev.sh` 已对授权步骤启用 `ON_ERROR_STOP=1`，授权失败会直接以非零码退出。
 
 需要的两个变量写在仓库根目录 `.env`（不要提交到 Git）：
 
